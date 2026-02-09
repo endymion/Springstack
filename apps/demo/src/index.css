@@ -165,7 +165,24 @@
       stroke var(--theme-transition-duration, 300ms);
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-body;
+    font-weight: var(--font-body-weight);
+  }
+
+  .font-headline {
+    font-weight: var(--font-headline-weight);
+  }
+
+  /* Cathode typeface uses Jersey 10 which needs to be larger */
+  :root[style*="Jersey 10"] .font-headline {
+    font-size: 1.5em;
+    line-height: 1.2;
+  }
+
+  /* Mystery typeface uses DM Serif Display which needs to be larger */
+  :root[style*="DM Serif Display"] .font-headline {
+    font-size: 1.35em;
+    line-height: 1.3;
   }
 }
 

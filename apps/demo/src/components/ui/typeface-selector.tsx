@@ -65,6 +65,15 @@ export function TypefaceSelector({
         const scrollTop = container.scrollTop;
         const centerIndex = Math.round(scrollTop / itemHeight) - spacerCount;
 
+        // Snap to the nearest item programmatically
+        const targetScroll = (centerIndex + spacerCount) * itemHeight;
+        if (Math.abs(scrollTop - targetScroll) > 1) {
+          container.scrollTo({
+            top: targetScroll,
+            behavior: motionDisabled ? ('instant' as ScrollBehavior) : 'smooth',
+          });
+        }
+
         // Only update if we're on an actual option (not a spacer)
         if (centerIndex >= 0 && centerIndex < options.length) {
           const centeredOption = options[centerIndex];
@@ -72,7 +81,7 @@ export function TypefaceSelector({
             onChange(centeredOption.id);
           }
         }
-      }, 150);
+      }, 50);
     };
 
     container.addEventListener('scroll', handleScroll, { passive: true });
@@ -133,6 +142,7 @@ export function TypefaceSelector({
           height: 'calc(6rem * 2.5)', // 2.5x item height
           scrollSnapType: 'y mandatory',
           scrollBehavior: motionDisabled ? 'auto' : 'smooth',
+          scrollPaddingBlock: 'calc(6rem * 0.75)', // Center alignment padding
         }}
         tabIndex={0}
         role="listbox"

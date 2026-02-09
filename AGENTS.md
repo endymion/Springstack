@@ -10,6 +10,8 @@
 
 **Tests:** Cucumber.js (`npm test`). Step defs in `features/step_definitions/`, support in `features/support/`. Tag `@skip` excludes scenarios. Config: `cucumber.js`
 
+**Important:** Do not commit changes without explicit user permission.
+
 ---
 
 ## Development

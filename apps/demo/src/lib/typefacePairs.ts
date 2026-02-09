@@ -25,26 +25,14 @@ export const typefacePairs: TypefacePair[] = [
     },
   },
   {
-    id: 'classic-serif',
-    name: 'Classic Serif',
+    id: 'contemporary',
+    name: 'Contemporary',
     headline: {
-      family: "'Playfair Display', serif",
+      family: "'Libre Baskerville', serif",
       weight: 700,
     },
     body: {
       family: "'Source Sans Pro', sans-serif",
-      weight: 400,
-    },
-  },
-  {
-    id: 'modern-sans',
-    name: 'Modern Sans',
-    headline: {
-      family: "'Montserrat', sans-serif",
-      weight: 700,
-    },
-    body: {
-      family: "'Open Sans', sans-serif",
       weight: 400,
     },
   },
@@ -61,68 +49,8 @@ export const typefacePairs: TypefacePair[] = [
     },
   },
   {
-    id: 'geometric',
-    name: 'Geometric',
-    headline: {
-      family: "'Raleway', sans-serif",
-      weight: 700,
-    },
-    body: {
-      family: "'Lato', sans-serif",
-      weight: 400,
-    },
-  },
-  {
-    id: 'humanist',
-    name: 'Humanist',
-    headline: {
-      family: "'Merriweather', serif",
-      weight: 700,
-    },
-    body: {
-      family: "'Lato', sans-serif",
-      weight: 400,
-    },
-  },
-  {
-    id: 'contemporary',
-    name: 'Contemporary',
-    headline: {
-      family: "'Libre Baskerville', serif",
-      weight: 700,
-    },
-    body: {
-      family: "'Source Sans Pro', sans-serif",
-      weight: 400,
-    },
-  },
-  {
-    id: 'editorial',
-    name: 'Editorial',
-    headline: {
-      family: "'Crimson Text', serif",
-      weight: 600,
-    },
-    body: {
-      family: "'Work Sans', sans-serif",
-      weight: 400,
-    },
-  },
-  {
-    id: 'tech-modern',
-    name: 'Tech Modern',
-    headline: {
-      family: "'Space Grotesk', sans-serif",
-      weight: 700,
-    },
-    body: {
-      family: "'Inter', sans-serif",
-      weight: 400,
-    },
-  },
-  {
-    id: 'minimalist',
-    name: 'Minimalist',
+    id: 'mystery',
+    name: 'Mystery',
     headline: {
       family: "'DM Serif Display', serif",
       weight: 400,
@@ -133,26 +61,14 @@ export const typefacePairs: TypefacePair[] = [
     },
   },
   {
-    id: 'refined',
-    name: 'Refined',
+    id: 'cathode',
+    name: 'Cathode',
     headline: {
-      family: "'Spectral', serif",
-      weight: 600,
-    },
-    body: {
-      family: "'Rubik', sans-serif",
+      family: "'Jersey 10', cursive",
       weight: 400,
     },
-  },
-  {
-    id: 'bold-editorial',
-    name: 'Bold Editorial',
-    headline: {
-      family: "'Bitter', serif",
-      weight: 700,
-    },
     body: {
-      family: "'Nunito Sans', sans-serif",
+      family: "'Inter', sans-serif",
       weight: 400,
     },
   },

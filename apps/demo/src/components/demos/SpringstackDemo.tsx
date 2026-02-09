@@ -349,7 +349,7 @@ export function SpringstackDemo() {
           <div className="flex items-center justify-between font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">
             <span>{currentItems.length} items in {currentCorpus?.name ?? '—'}</span>
           </div>
-          <div className="grid gap-2 md:grid-cols-2">
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
             {currentItems.map(item => {
               if (!currentCorpus) return null;
               const node = buildItemNode(item, currentCorpus);
@@ -362,13 +362,13 @@ export function SpringstackDemo() {
                   type="button"
                   {...cardProps}
                   className={mergeClass(
-                    'flex w-full items-start gap-2 rounded-md bg-muted p-2 text-left text-sm transition-colors hover:bg-hover',
+                    'flex w-full items-start gap-1 rounded-md bg-muted p-2 text-left text-sm transition-colors hover:bg-hover',
                     cardProps.className
                   )}
                   data-enter-item
                 >
-                  <div data-card-shell="true" className="flex w-full items-start gap-2">
-                    <div data-card-content="true" className="flex w-full items-start gap-2">
+                  <div data-card-shell="true" className=" flex w-full items-start gap-1">
+                    <div data-card-content="true" className=" flex w-full items-start gap-1">
                       {(renderers.list?.item ?? renderers.list?.default)?.(node)}
                     </div>
                   </div>
@@ -571,7 +571,7 @@ export function SpringstackDemo() {
                 <div className="basis-full shrink-0" {...helpers.getPanelProps('root:corpora')}>
                   <div className="flex h-full flex-col gap-2 p-1">
                     <div className="font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">Corpora</div>
-                    <div className="grid gap-2 md:grid-cols-2">
+                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
                       {demoCorpora.map(corpus => {
                         const node = buildCorpusNode(corpus);
                         const cardProps = helpers.getCardProps(node, {
@@ -583,13 +583,13 @@ export function SpringstackDemo() {
                             type="button"
                             {...cardProps}
                             className={mergeClass(
-                              'flex w-full items-start gap-2 rounded-md bg-muted p-2 text-left text-sm transition-colors hover:bg-hover',
+                              'flex w-full items-start gap-1 rounded-md bg-muted p-2 text-left text-sm transition-colors hover:bg-hover',
                               cardProps.className
                             )}
                             data-enter-item
                           >
-                            <div data-card-shell="true" className="flex w-full items-start gap-2">
-                              <div data-card-content="true" className="flex w-full items-start gap-2">
+                            <div data-card-shell="true" className=" flex w-full items-start gap-1">
+                              <div data-card-content="true" className=" flex w-full items-start gap-1">
                                 {(renderers.list?.corpus ?? renderers.list?.default)?.(node)}
                               </div>
                             </div>
@@ -624,12 +624,12 @@ export function SpringstackDemo() {
                           type="button"
                           {...cardProps}
                           className={mergeClass(
-                            'flex w-full items-start gap-2 rounded-md bg-muted p-2 text-left text-sm transition-colors hover:bg-hover',
+                            ' flex w-full items-start gap-1 rounded-md bg-muted p-2 text-left text-sm transition-colors hover:bg-hover',
                             cardProps.className
                           )}
                         >
-                          <div data-card-shell="true" className="flex w-full items-start gap-2">
-                            <div data-card-content="true" className="flex w-full items-start gap-2">
+                          <div data-card-shell="true" className=" flex w-full items-start gap-1">
+                            <div data-card-content="true" className=" flex w-full items-start gap-1">
                               {(renderers.list?.detail ?? renderers.list?.default)?.(node)}
                             </div>
                           </div>
