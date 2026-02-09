@@ -345,8 +345,8 @@ export function SpringstackDemo() {
           currentCorpus ? `corpus:${currentCorpus.id}:items` : 'corpus:unknown:items'
         )}
       >
-        <div className="flex h-full flex-col gap-2 p-1">
-          <div className="flex items-center justify-between font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">
+        <div className="flex h-full flex-col gap-2 p-2">
+          <div className="flex items-center justify-between font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-7">
             <span>{currentItems.length} items in {currentCorpus?.name ?? '—'}</span>
           </div>
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
@@ -452,7 +452,7 @@ export function SpringstackDemo() {
                   <button
                     type="button"
                     onClick={handleCloseSettings}
-                    className="flex items-center gap-1 text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground pl-8"
+                    className="flex items-center gap-1 text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground pl-6"
                   >
                     <X className="h-4 w-4" strokeWidth={2.25} />
                     Close
@@ -569,8 +569,8 @@ export function SpringstackDemo() {
             return (
               <>
                 <div className="basis-full shrink-0" {...helpers.getPanelProps('root:corpora')}>
-                  <div className="flex h-full flex-col gap-2 p-1">
-                    <div className="font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">Corpora</div>
+                  <div className="flex h-full flex-col gap-2 p-2">
+                    <div className="font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-7">Corpora</div>
                     <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
                       {demoCorpora.map(corpus => {
                         const node = buildCorpusNode(corpus);
@@ -603,8 +603,8 @@ export function SpringstackDemo() {
                 <ItemsPanel helpers={helpers} currentCorpus={currentCorpus} currentItems={currentItems} />
 
                 <div className="basis-full shrink-0" {...helpers.getPanelProps('item:detail')}>
-                  <div className="flex h-full flex-col gap-2 p-1">
-                    <div className="font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">Item</div>
+                  <div className="flex h-full flex-col gap-2 p-2">
+                    <div className="font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-7">Item</div>
                     <div className="rounded-md bg-muted p-2">
                       <div className="flex items-start gap-1">
                         <FileText className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />
@@ -640,8 +640,8 @@ export function SpringstackDemo() {
                 </div>
 
                 <div className="basis-full shrink-0" {...helpers.getPanelProps('detail:evidence')}>
-                  <div className="flex h-full flex-col gap-2 p-1">
-                    <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">Detail</div>
+                  <div className="flex h-full flex-col gap-2 p-2">
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground pl-7">Detail</div>
                     <div className="flex flex-col gap-2 rounded-md bg-muted p-2">
                       <div className="flex items-start gap-1">
                         <Layers className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />
@@ -666,7 +666,7 @@ export function SpringstackDemo() {
             return (
               <>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">Controls</div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground pl-7">Controls</div>
                   <button
                     type="button"
                     onClick={() => handlePushNext(helpers)}

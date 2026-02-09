@@ -178,12 +178,6 @@
     font-size: 1.5em;
     line-height: 1.2;
   }
-
-  /* Mystery typeface uses DM Serif Display which needs to be larger */
-  :root[style*="DM Serif Display"] .font-headline {
-    font-size: 1.35em;
-    line-height: 1.3;
-  }
 }
 
 /* Scrollbars */

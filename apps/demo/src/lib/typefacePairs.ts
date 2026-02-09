@@ -37,26 +37,26 @@ export const typefacePairs: TypefacePair[] = [
     },
   },
   {
-    id: 'elegant',
-    name: 'Elegant',
+    id: 'monospace',
+    name: 'Monospace',
     headline: {
-      family: "'Cormorant Garamond', serif",
-      weight: 600,
+      family: "'Inconsolata', monospace",
+      weight: 700,
     },
     body: {
-      family: "'Proza Libre', sans-serif",
+      family: "'Roboto', sans-serif",
       weight: 400,
     },
   },
   {
-    id: 'mystery',
-    name: 'Mystery',
+    id: 'helvetica',
+    name: 'Helvetica',
     headline: {
-      family: "'DM Serif Display', serif",
-      weight: 400,
+      family: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+      weight: 700,
     },
     body: {
-      family: "'DM Sans', sans-serif",
+      family: "'Helvetica Neue', Helvetica, Arial, sans-serif",
       weight: 400,
     },
   },

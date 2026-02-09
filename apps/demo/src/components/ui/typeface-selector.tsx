@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { gsap } from 'gsap';
 import { type TypefacePair } from '../../lib/typefacePairs';
 
 interface TypefaceSelectorProps {
@@ -17,6 +18,7 @@ export function TypefaceSelector({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout>();
+  const isAnimatingRef = useRef(false);
 
   // Number of spacer items needed to allow first/last items to center
   const spacerCount = 1; // One spacer above and below (2.5 view height / 2 = 1.25, rounded to 1)
@@ -32,8 +34,11 @@ export function TypefaceSelector({
     // Total items including spacers: spacerCount + options.length + spacerCount
     const totalItems = spacerCount + options.length + spacerCount;
     const itemHeight = container.scrollHeight / totalItems;
-    // Adjust index to account for top spacers
-    const targetScroll = (selectedIndex + spacerCount) * itemHeight;
+    const containerHeight = container.clientHeight;
+
+    // Calculate scroll position to center the item
+    const itemTopPosition = (selectedIndex + spacerCount) * itemHeight;
+    const targetScroll = itemTopPosition - (containerHeight / 2) + (itemHeight / 2);
 
     // Instant scroll without animation on mount
     container.scrollTo({
@@ -48,6 +53,9 @@ export function TypefaceSelector({
     if (!container) return;
 
     const handleScroll = () => {
+      // Don't interfere if we're animating
+      if (isAnimatingRef.current) return;
+
       setIsScrolling(true);
 
       // Clear previous timeout
@@ -59,29 +67,63 @@ export function TypefaceSelector({
       scrollTimeoutRef.current = setTimeout(() => {
         setIsScrolling(false);
 
-        // Calculate which item is centered
+        // Get viewport center position
+        const containerRect = container.getBoundingClientRect();
+        const viewportCenter = containerRect.top + containerRect.height / 2;
+
+        // Find which option is closest to viewport center
+        let closestIndex = 0;
+        let closestDistance = Infinity;
+
+        options.forEach((option, index) => {
+          const optionElement = document.getElementById(`typeface-option-${option.id}`);
+          if (optionElement) {
+            const optionRect = optionElement.getBoundingClientRect();
+            const optionCenter = optionRect.top + optionRect.height / 2;
+            const distance = Math.abs(optionCenter - viewportCenter);
+
+            if (distance < closestDistance) {
+              closestDistance = distance;
+              closestIndex = index;
+            }
+          }
+        });
+
+        // Calculate scroll target to center the closest item
         const totalItems = spacerCount + options.length + spacerCount;
         const itemHeight = container.scrollHeight / totalItems;
-        const scrollTop = container.scrollTop;
-        const centerIndex = Math.round(scrollTop / itemHeight) - spacerCount;
+        const containerHeight = container.clientHeight;
 
-        // Snap to the nearest item programmatically
-        const targetScroll = (centerIndex + spacerCount) * itemHeight;
-        if (Math.abs(scrollTop - targetScroll) > 1) {
+        // Position so item is centered: item position minus half container height plus half item height
+        const itemTopPosition = (closestIndex + spacerCount) * itemHeight;
+        const targetScroll = itemTopPosition - (containerHeight / 2) + (itemHeight / 2);
+
+        // Snap to the closest item with spring physics animation
+        if (motionDisabled) {
           container.scrollTo({
             top: targetScroll,
-            behavior: motionDisabled ? ('instant' as ScrollBehavior) : 'smooth',
+            behavior: 'instant' as ScrollBehavior,
+          });
+        } else {
+          // Use GSAP for smooth spring animation with overshoot
+          isAnimatingRef.current = true;
+          gsap.to(container, {
+            scrollTop: targetScroll,
+            duration: 0.6,
+            ease: 'back.out(1.7)', // Back easing creates overshoot effect
+            overwrite: true,
+            onComplete: () => {
+              isAnimatingRef.current = false;
+            },
           });
         }
 
-        // Only update if we're on an actual option (not a spacer)
-        if (centerIndex >= 0 && centerIndex < options.length) {
-          const centeredOption = options[centerIndex];
-          if (centeredOption && centeredOption.id !== value) {
-            onChange(centeredOption.id);
-          }
+        // Update selection
+        const centeredOption = options[closestIndex];
+        if (centeredOption && centeredOption.id !== value) {
+          onChange(centeredOption.id);
         }
-      }, 50);
+      }, 100);
     };
 
     container.addEventListener('scroll', handleScroll, { passive: true });
@@ -92,7 +134,7 @@ export function TypefaceSelector({
         clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [options, value, onChange]);
+  }, [options, value, onChange, spacerCount, motionDisabled]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -140,9 +182,7 @@ export function TypefaceSelector({
         className="typeface-scroll-container relative overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted"
         style={{
           height: 'calc(6rem * 2.5)', // 2.5x item height
-          scrollSnapType: 'y mandatory',
           scrollBehavior: motionDisabled ? 'auto' : 'smooth',
-          scrollPaddingBlock: 'calc(6rem * 0.75)', // Center alignment padding
         }}
         tabIndex={0}
         role="listbox"
@@ -154,7 +194,6 @@ export function TypefaceSelector({
           <div
             key={`spacer-top-${i}`}
             className="h-24 w-full"
-            style={{ scrollSnapAlign: 'center' }}
             aria-hidden="true"
           />
         ))}
@@ -169,8 +208,6 @@ export function TypefaceSelector({
               id={`typeface-option-${option.id}`}
               className="flex h-24 w-full cursor-pointer flex-col items-center justify-center gap-1 px-4 transition-opacity duration-200"
               style={{
-                scrollSnapAlign: 'center',
-                scrollSnapStop: 'always',
                 opacity: isSelected ? 1 : 0.4,
               }}
               onClick={() => {
@@ -222,15 +259,10 @@ export function TypefaceSelector({
           <div
             key={`spacer-bottom-${i}`}
             className="h-24 w-full"
-            style={{ scrollSnapAlign: 'center' }}
             aria-hidden="true"
           />
         ))}
       </div>
-
-      {/* Fade edges */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-background to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-background to-transparent" />
     </div>
   );
 }
