@@ -18,6 +18,9 @@ export function TypefaceSelector({
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout>();
 
+  // Number of spacer items needed to allow first/last items to center
+  const spacerCount = 1; // One spacer above and below (2.5 view height / 2 = 1.25, rounded to 1)
+
   // Scroll to selected item on mount or when value changes externally
   useEffect(() => {
     if (!containerRef.current) return;
@@ -26,15 +29,18 @@ export function TypefaceSelector({
     if (selectedIndex === -1) return;
 
     const container = containerRef.current;
-    const itemHeight = container.scrollHeight / options.length;
-    const targetScroll = selectedIndex * itemHeight;
+    // Total items including spacers: spacerCount + options.length + spacerCount
+    const totalItems = spacerCount + options.length + spacerCount;
+    const itemHeight = container.scrollHeight / totalItems;
+    // Adjust index to account for top spacers
+    const targetScroll = (selectedIndex + spacerCount) * itemHeight;
 
     // Instant scroll without animation on mount
     container.scrollTo({
       top: targetScroll,
       behavior: 'instant' as ScrollBehavior,
     });
-  }, [value, options]);
+  }, [value, options, spacerCount]);
 
   // Detect which item is centered after scroll stops
   useEffect(() => {
@@ -54,13 +60,17 @@ export function TypefaceSelector({
         setIsScrolling(false);
 
         // Calculate which item is centered
-        const itemHeight = container.scrollHeight / options.length;
+        const totalItems = spacerCount + options.length + spacerCount;
+        const itemHeight = container.scrollHeight / totalItems;
         const scrollTop = container.scrollTop;
-        const centerIndex = Math.round(scrollTop / itemHeight);
+        const centerIndex = Math.round(scrollTop / itemHeight) - spacerCount;
 
-        const centeredOption = options[centerIndex];
-        if (centeredOption && centeredOption.id !== value) {
-          onChange(centeredOption.id);
+        // Only update if we're on an actual option (not a spacer)
+        if (centerIndex >= 0 && centerIndex < options.length) {
+          const centeredOption = options[centerIndex];
+          if (centeredOption && centeredOption.id !== value) {
+            onChange(centeredOption.id);
+          }
         }
       }, 150);
     };
@@ -94,9 +104,10 @@ export function TypefaceSelector({
       }
 
       if (newIndex !== currentIndex) {
-        const itemHeight = container.scrollHeight / options.length;
+        const totalItems = spacerCount + options.length + spacerCount;
+        const itemHeight = container.scrollHeight / totalItems;
         container.scrollTo({
-          top: newIndex * itemHeight,
+          top: (newIndex + spacerCount) * itemHeight,
           behavior: motionDisabled ? ('instant' as ScrollBehavior) : 'smooth',
         });
       }
@@ -104,7 +115,7 @@ export function TypefaceSelector({
 
     container.addEventListener('keydown', handleKeyDown);
     return () => container.removeEventListener('keydown', handleKeyDown);
-  }, [options, value, motionDisabled]);
+  }, [options, value, motionDisabled, spacerCount]);
 
   return (
     <div className="relative">
@@ -128,6 +139,17 @@ export function TypefaceSelector({
         aria-label="Select typeface"
         aria-activedescendant={`typeface-option-${value}`}
       >
+        {/* Top spacers to allow first item to center */}
+        {Array.from({ length: spacerCount }).map((_, i) => (
+          <div
+            key={`spacer-top-${i}`}
+            className="h-24 w-full"
+            style={{ scrollSnapAlign: 'center' }}
+            aria-hidden="true"
+          />
+        ))}
+
+        {/* Actual options */}
         {options.map((option, index) => {
           const isSelected = option.id === value;
 
@@ -145,9 +167,10 @@ export function TypefaceSelector({
                 const container = containerRef.current;
                 if (!container) return;
 
-                const itemHeight = container.scrollHeight / options.length;
+                const totalItems = spacerCount + options.length + spacerCount;
+                const itemHeight = container.scrollHeight / totalItems;
                 container.scrollTo({
-                  top: index * itemHeight,
+                  top: (index + spacerCount) * itemHeight,
                   behavior: motionDisabled ? ('instant' as ScrollBehavior) : 'smooth',
                 });
               }}
@@ -183,6 +206,16 @@ export function TypefaceSelector({
             </button>
           );
         })}
+
+        {/* Bottom spacers to allow last item to center */}
+        {Array.from({ length: spacerCount }).map((_, i) => (
+          <div
+            key={`spacer-bottom-${i}`}
+            className="h-24 w-full"
+            style={{ scrollSnapAlign: 'center' }}
+            aria-hidden="true"
+          />
+        ))}
       </div>
 
       {/* Fade edges */}

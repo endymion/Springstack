@@ -18,9 +18,14 @@ export function useAppearance() {
   const [appearance, setAppearance] = useState<AppearanceState>(() => {
     // Check system preference for reduced motion
     // Safe check for window availability (CSR)
-    const systemReduceMotion = typeof window !== 'undefined' 
-        ? window.matchMedia('(prefers-reduced-motion: reduce)').matches 
+    const systemReduceMotion = typeof window !== 'undefined'
+        ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
         : false;
+
+    // Safe check for localStorage availability (CSR)
+    if (typeof window === 'undefined') {
+      return { theme: 'cool', mode: 'system', reduceMotion: systemReduceMotion, typeface: 'system-default' };
+    }
 
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
