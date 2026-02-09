@@ -7,6 +7,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        headline: ['var(--font-headline)', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+        body: ['var(--font-body)', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+      },
       borderRadius: {
         DEFAULT: '0.25rem',
         sm: '0.125rem',

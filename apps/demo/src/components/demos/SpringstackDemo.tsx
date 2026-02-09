@@ -30,6 +30,8 @@ import {
 } from 'springstack';
 import { useAppearance } from '@/lib/useAppearance';
 import { AnimatedSelector } from '@/components/ui/animated-selector';
+import { TypefaceSelector } from '@/components/ui/typeface-selector';
+import { typefacePairs } from '@/lib/typefacePairs';
 
 type NodeKind = 'root' | 'corpus' | 'item' | 'detail';
 
@@ -153,8 +155,8 @@ const buildRenderers = (): SpringstackRenderers<DemoNodeData> => {
     <>
       {icon}
       <div className="flex flex-col">
-        <span className="font-semibold text-foreground">{node.title}</span>
-        {node.data?.metaLine && <span className="text-xs text-muted-foreground">{node.data.metaLine}</span>}
+        <span className="font-headline font-semibold text-foreground">{node.title}</span>
+        {node.data?.metaLine && <span className="font-body text-xs text-muted-foreground">{node.data.metaLine}</span>}
       </div>
     </>
   );
@@ -184,12 +186,31 @@ const timingModes: Array<{ id: SpringstackTimingMode; label: string }> = [
   { id: 'slow', label: 'Sslloooww' }
 ];
 
+const MOTION_STORAGE_KEY = 'springstack-motion';
+
 export function SpringstackDemo() {
-  const { reduceMotion, theme, mode, setTheme, setMode, setReduceMotion } = useAppearance();
+  const { reduceMotion, theme, mode, typeface, setTheme, setMode, setReduceMotion, setTypeface } = useAppearance();
   const [motionPreset, setMotionPreset] = useState<'normal' | 'reduced' | 'system' | 'gratuitous' | 'slow' | 'off'>(
-    reduceMotion ? 'reduced' : 'normal'
+    () => {
+      if (typeof window === 'undefined') return 'system';
+      const stored = localStorage.getItem(MOTION_STORAGE_KEY);
+      if (!stored) return 'system';
+      if (stored === 'normal' || stored === 'reduced' || stored === 'system' || stored === 'gratuitous' || stored === 'slow' || stored === 'off') {
+        return stored;
+      }
+      return 'system';
+    }
   );
-  const [timingMode, setTimingMode] = useState<SpringstackTimingMode>(reduceMotion ? 'reduced' : 'normal');
+  const [timingMode, setTimingMode] = useState<SpringstackTimingMode>(() => {
+    if (typeof window === 'undefined') return reduceMotion ? 'reduced' : 'normal';
+    const stored = localStorage.getItem(MOTION_STORAGE_KEY);
+    if (stored === 'system') return reduceMotion ? 'reduced' : 'normal';
+    if (stored === 'off') return 'off';
+    if (stored === 'normal' || stored === 'reduced' || stored === 'gratuitous' || stored === 'slow') {
+      return stored;
+    }
+    return reduceMotion ? 'reduced' : 'normal';
+  });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [settingsShown, setSettingsShown] = useState(false);
@@ -203,7 +224,12 @@ export function SpringstackDemo() {
     } else if (motionPreset === 'off') {
       setTimingMode('off');
     }
-  }, [reduceMotion]);
+  }, [motionPreset, reduceMotion]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(MOTION_STORAGE_KEY, motionPreset);
+  }, [motionPreset]);
 
   useEffect(() => {
     if (motionPreset === 'off') {
@@ -320,7 +346,7 @@ export function SpringstackDemo() {
         )}
       >
         <div className="flex h-full flex-col gap-2 p-1">
-          <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">
+          <div className="flex items-center justify-between font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">
             <span>{currentItems.length} items in {currentCorpus?.name ?? '—'}</span>
           </div>
           <div className="grid gap-2 md:grid-cols-2">
@@ -383,7 +409,7 @@ export function SpringstackDemo() {
           className="flex flex-1 flex-col"
           renderHeader={() => (
             <div className="flex items-center justify-between rounded-md bg-card p-2">
-              <div className="flex items-center gap-1 text-sm font-semibold text-foreground pl-2">
+              <div className="flex items-center gap-1 font-headline text-sm font-semibold text-foreground pl-2">
                 <FileStack className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />
                 Springstack
               </div>
@@ -420,7 +446,7 @@ export function SpringstackDemo() {
                   onClick={event => event.stopPropagation()}
                 >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <div className="flex items-center gap-2 font-headline text-sm font-semibold text-foreground">
                     Settings
                   </div>
                   <button
@@ -436,7 +462,7 @@ export function SpringstackDemo() {
                 <div className="mt-6 grid gap-6 md:grid-cols-2">
                   <div className="flex flex-col gap-6">
                     <div>
-                      <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Mode</h3>
+                      <h3 className="mb-2 font-body text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Mode</h3>
                       <AnimatedSelector
                         name="mode"
                         value={mode}
@@ -454,7 +480,7 @@ export function SpringstackDemo() {
                       />
                     </div>
                     <div>
-                      <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Motion</h3>
+                      <h3 className="mb-2 font-body text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Motion</h3>
                     <AnimatedSelector
                       name="motion"
                       value={motionPreset}
@@ -489,7 +515,7 @@ export function SpringstackDemo() {
                     </div>
                   </div>
                   <div>
-                    <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Theme</h3>
+                    <h3 className="mb-2 font-body text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Theme</h3>
                     <AnimatedSelector
                       name="theme"
                       value={theme}
@@ -520,6 +546,17 @@ export function SpringstackDemo() {
                     />
                   </div>
                 </div>
+
+                {/* Typeface Selector - Full Width Section */}
+                <div className="mt-6">
+                  <h3 className="mb-2 font-body text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Typeface</h3>
+                  <TypefaceSelector
+                    options={typefacePairs}
+                    value={typeface}
+                    onChange={setTypeface}
+                    motionDisabled={motionPreset === 'off'}
+                  />
+                </div>
                 </div>
               </div>
             );
@@ -533,7 +570,7 @@ export function SpringstackDemo() {
               <>
                 <div className="basis-full shrink-0" {...helpers.getPanelProps('root:corpora')}>
                   <div className="flex h-full flex-col gap-2 p-1">
-                    <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">Corpora</div>
+                    <div className="font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">Corpora</div>
                     <div className="grid gap-2 md:grid-cols-2">
                       {demoCorpora.map(corpus => {
                         const node = buildCorpusNode(corpus);
@@ -567,13 +604,13 @@ export function SpringstackDemo() {
 
                 <div className="basis-full shrink-0" {...helpers.getPanelProps('item:detail')}>
                   <div className="flex h-full flex-col gap-2 p-1">
-                    <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">Item</div>
+                    <div className="font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">Item</div>
                     <div className="rounded-md bg-muted p-2">
                       <div className="flex items-start gap-1">
                         <FileText className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />
-                        <div className="text-sm font-semibold text-foreground">{currentItem?.title ?? '—'}</div>
+                        <div className="font-headline text-sm font-semibold text-foreground">{currentItem?.title ?? '—'}</div>
                       </div>
-                      <div className="mt-2 text-xs text-muted-foreground">
+                      <div className="font-body mt-2 text-xs text-muted-foreground">
                         {currentItem?.mediaType ?? '—'} · {currentItem?.sizeKb ?? 0} KB
                       </div>
                     </div>

@@ -11,6 +11,12 @@
 
 @layer base {
   :root {
+    /* Typography */
+    --font-headline: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-headline-weight: 600;
+    --font-body: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-body-weight: 400;
+
     /* Radix Gray scale aliases (step 1 page bg, 2 card/muted, 3–5 component states, 6–8 borders, 11–12 text) */
     --background: var(--gray-1);
     --foreground: var(--gray-12);
