@@ -18,49 +18,49 @@ export const springstackTypefacePresets: TypefacePreset[] = [
   {
     id: 'studio-sans',
     name: 'Studio Sans',
-    headline: { family: 'Inter', weight: 600 },
-    body: { family: 'Inter', weight: 400 },
-    eyebrow: { family: 'Inter', weight: 600 },
+    headline: { family: "'Inter', ui-sans-serif, system-ui, sans-serif", weight: 600 },
+    body: { family: "'Inter', ui-sans-serif, system-ui, sans-serif", weight: 400 },
+    eyebrow: { family: "'Inter', ui-sans-serif, system-ui, sans-serif", weight: 600 },
     caps: 'all-caps'
   },
   {
     id: 'signal-serif',
     name: 'Signal Serif',
-    headline: { family: 'Source Serif 4', weight: 600 },
-    body: { family: 'Inter', weight: 400 },
-    eyebrow: { family: 'Inter', weight: 600 },
+    headline: { family: "'Source Serif 4', 'Times New Roman', serif", weight: 600 },
+    body: { family: "'Inter', ui-sans-serif, system-ui, sans-serif", weight: 400 },
+    eyebrow: { family: "'Inter', ui-sans-serif, system-ui, sans-serif", weight: 600 },
     caps: 'small-caps'
   },
   {
     id: 'editorial',
     name: 'Editorial',
-    headline: { family: 'Playfair Display', weight: 600 },
-    body: { family: 'Source Sans 3', weight: 400 },
-    eyebrow: { family: 'Source Sans 3', weight: 600 },
+    headline: { family: "'Playfair Display', 'Times New Roman', serif", weight: 600 },
+    body: { family: "'Source Sans 3', ui-sans-serif, system-ui, sans-serif", weight: 400 },
+    eyebrow: { family: "'Source Sans 3', ui-sans-serif, system-ui, sans-serif", weight: 600 },
     caps: 'small-caps'
   },
   {
     id: 'mono-utility',
     name: 'Mono Utility',
-    headline: { family: 'Roboto Mono', weight: 600 },
-    body: { family: 'Inter', weight: 400 },
-    eyebrow: { family: 'Roboto Mono', weight: 600 },
+    headline: { family: "'Roboto Mono', ui-monospace, SFMono-Regular, monospace", weight: 600 },
+    body: { family: "'Inter', ui-sans-serif, system-ui, sans-serif", weight: 400 },
+    eyebrow: { family: "'Roboto Mono', ui-monospace, SFMono-Regular, monospace", weight: 600 },
     caps: 'all-caps'
   },
   {
     id: 'archive-sans',
     name: 'Archive Sans',
-    headline: { family: 'IBM Plex Sans', weight: 600 },
-    body: { family: 'IBM Plex Sans', weight: 400 },
-    eyebrow: { family: 'IBM Plex Sans', weight: 600 },
+    headline: { family: "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif", weight: 600 },
+    body: { family: "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif", weight: 400 },
+    eyebrow: { family: "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif", weight: 600 },
     caps: 'all-caps'
   },
   {
     id: 'jersey-arcade',
     name: 'Jersey Arcade',
-    headline: { family: 'Jersey 15', weight: 400 },
-    body: { family: 'Inter', weight: 400 },
-    eyebrow: { family: 'Roboto Mono', weight: 600 },
+    headline: { family: "'Jersey 15', ui-sans-serif, system-ui, sans-serif", weight: 400 },
+    body: { family: "'Inter', ui-sans-serif, system-ui, sans-serif", weight: 400 },
+    eyebrow: { family: "'Roboto Mono', ui-monospace, SFMono-Regular, monospace", weight: 600 },
     caps: 'all-caps'
   }
 ];
@@ -74,9 +74,11 @@ export const loadGoogleFonts = (families: Array<{ family: string; weight: number
   const grouped = new Map<string, Set<number>>();
   families.forEach(({ family, weight }) => {
     if (!family) return;
-    const weights = grouped.get(family) ?? new Set<number>();
+    const rawFamily = family.split(',')[0]?.trim().replace(/^['"]|['"]$/g, '');
+    if (!rawFamily) return;
+    const weights = grouped.get(rawFamily) ?? new Set<number>();
     weights.add(weight);
-    grouped.set(family, weights);
+    grouped.set(rawFamily, weights);
   });
 
   grouped.forEach((weights, family) => {
