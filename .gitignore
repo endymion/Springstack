@@ -1,0 +1,9 @@
+node_modules
+.DS_Store
+.dist
+**/dist
+**/.cache
+**/.vite
+cdk.out
+.env
+.env.local

@@ -1,0 +1,18 @@
+{
+  "name": "springstack-infra",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "cdk:deploy": "cdk deploy",
+    "cdk:destroy": "cdk destroy",
+    "cdk:synth": "cdk synth"
+  },
+  "devDependencies": {
+    "aws-cdk": "^2.234.1",
+    "aws-cdk-lib": "^2.234.1",
+    "constructs": "^10.4.5",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

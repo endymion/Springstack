@@ -1,0 +1,678 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import {
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  Bug,
+  FileText,
+  Folder,
+  Layers,
+  Link2,
+  Monitor,
+  Moon,
+  Play,
+  PlugZap,
+  RotateCcw,
+  Settings,
+  X,
+  Sun,
+  Zap,
+  ZapOff
+} from 'lucide-react';
+import {
+  Springstack,
+  type SpringstackHelpers,
+  type SpringstackNode,
+  type SpringstackRenderers,
+  type SpringstackTimingMode
+} from 'springstack';
+import { useAppearance } from '@/lib/useAppearance';
+import { AnimatedSelector } from '@/components/ui/animated-selector';
+
+type NodeKind = 'root' | 'corpus' | 'item' | 'detail';
+
+interface DemoNodeData {
+  corpusId?: string;
+  itemId?: string;
+  mediaType?: string;
+  sizeKb?: number;
+  metaLine?: string;
+}
+
+interface Corpus {
+  id: string;
+  name: string;
+  metaLine: string;
+}
+
+interface CorpusItem {
+  id: string;
+  title: string;
+  mediaType: string;
+  sizeKb: number;
+}
+
+const demoCorpora: Corpus[] = [
+  { id: 'c-archive', name: 'Zettelkasten', metaLine: '12 collections · 3.2 GB' },
+  { id: 'c-patristics', name: 'Patristics', metaLine: '9 collections · 2.1 GB' },
+  { id: 'c-iconography', name: 'Iconography', metaLine: '7 collections · 1.6 GB' }
+];
+
+const demoItems: Record<string, CorpusItem[]> = {
+  'c-archive': [
+    { id: 'i-001', title: 'Card Index Notes', mediaType: 'text/markdown', sizeKb: 84 },
+    { id: 'i-002', title: 'Threaded Themes', mediaType: 'application/pdf', sizeKb: 412 },
+    { id: 'i-003', title: 'Footnote Garden', mediaType: 'text/plain', sizeKb: 29 }
+  ],
+  'c-patristics': [
+    { id: 'i-101', title: 'Homilies Draft', mediaType: 'application/pdf', sizeKb: 732 },
+    { id: 'i-102', title: 'Synod Memo', mediaType: 'text/markdown', sizeKb: 56 },
+    { id: 'i-103', title: 'Lexicon Table', mediaType: 'text/csv', sizeKb: 18 }
+  ],
+  'c-iconography': [
+    { id: 'i-201', title: 'Mosaic Study', mediaType: 'image/png', sizeKb: 1240 },
+    { id: 'i-202', title: 'Icon Series Notes', mediaType: 'text/markdown', sizeKb: 67 },
+    { id: 'i-203', title: 'Panel Restoration', mediaType: 'application/pdf', sizeKb: 503 }
+  ]
+};
+
+const mergeClass = (...classes: Array<string | undefined>) => classes.filter(Boolean).join(' ');
+
+const resolvePreviewMode = (mode: 'light' | 'dark' | 'system') => {
+  if (mode !== 'system') return mode;
+  if (typeof window === 'undefined') return 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
+const ThemeStripePreview = ({
+  themeId,
+  resolvedMode
+}: {
+  themeId: 'neutral' | 'cool' | 'warm';
+  resolvedMode: 'light' | 'dark';
+}) => (
+  <div className={mergeClass(`theme-${themeId}`, resolvedMode, 'w-full')}>
+    <div className="flex h-6 w-full">
+      <div className="flex-1 bg-primary" />
+      <div className="flex-1 bg-secondary" />
+      <div className="flex-1 bg-status-true" />
+    </div>
+  </div>
+);
+
+const buildRootNode = (): SpringstackNode<DemoNodeData> => ({
+  id: 'root',
+  kind: 'root',
+  title: 'Springstack',
+  data: { metaLine: `${demoCorpora.length} corpora` }
+});
+
+const buildCorpusNode = (corpus: Corpus): SpringstackNode<DemoNodeData> => ({
+  id: corpus.id,
+  kind: 'corpus',
+  title: corpus.name,
+  data: { corpusId: corpus.id, metaLine: corpus.metaLine }
+});
+
+const buildItemNode = (item: CorpusItem, corpus: Corpus): SpringstackNode<DemoNodeData> => ({
+  id: item.id,
+  kind: 'item',
+  title: item.title,
+  data: {
+    corpusId: corpus.id,
+    itemId: item.id,
+    mediaType: item.mediaType,
+    sizeKb: item.sizeKb,
+    metaLine: `${item.mediaType} · ${item.sizeKb} KB`
+  }
+});
+
+const buildDetailNode = (item: CorpusItem): SpringstackNode<DemoNodeData> => ({
+  id: `detail-${item.id}`,
+  kind: 'detail',
+  title: 'Detail View',
+  data: { itemId: item.id, metaLine: 'Evidence pack' }
+});
+
+const resolveCurrentCorpus = (stack: SpringstackNode<DemoNodeData>[]) => {
+  const corpusNode = stack.find(node => node.kind === 'corpus');
+  if (!corpusNode?.data?.corpusId) return null;
+  return demoCorpora.find(corpus => corpus.id === corpusNode.data?.corpusId) ?? null;
+};
+
+const resolveCurrentItem = (stack: SpringstackNode<DemoNodeData>[], corpus: Corpus | null) => {
+  const itemNode = stack.find(node => node.kind === 'item');
+  if (!itemNode?.data?.itemId || !corpus) return null;
+  return (demoItems[corpus.id] ?? []).find(item => item.id === itemNode.data?.itemId) ?? null;
+};
+
+const buildRenderers = (): SpringstackRenderers<DemoNodeData> => {
+  const renderCard = (icon: ReactNode, node: SpringstackNode<DemoNodeData>) => (
+    <>
+      {icon}
+      <div className="flex flex-col">
+        <span className="font-semibold text-foreground">{node.title}</span>
+        {node.data?.metaLine && <span className="text-xs text-muted-foreground">{node.data.metaLine}</span>}
+      </div>
+    </>
+  );
+
+  return {
+    list: {
+      root: node => renderCard(<Layers className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
+      corpus: node => renderCard(<Folder className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
+      item: node => renderCard(<FileText className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
+      detail: node => renderCard(<Link2 className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
+      default: node => renderCard(<Layers className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node)
+    },
+    crumb: {
+      root: node => renderCard(<Layers className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
+      corpus: node => renderCard(<Folder className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
+      item: node => renderCard(<FileText className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
+      detail: node => renderCard(<Link2 className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
+      default: node => renderCard(<Layers className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node)
+    }
+  };
+};
+
+const timingModes: Array<{ id: SpringstackTimingMode; label: string }> = [
+  { id: 'normal', label: 'Normal' },
+  { id: 'reduced', label: 'Reduced' },
+  { id: 'gratuitous', label: 'Gratuitous' },
+  { id: 'slow', label: 'Sslloooww' }
+];
+
+export function SpringstackDemo() {
+  const { reduceMotion, theme, mode, setTheme, setMode, setReduceMotion } = useAppearance();
+  const [motionPreset, setMotionPreset] = useState<'normal' | 'reduced' | 'system' | 'gratuitous' | 'slow' | 'off'>(
+    reduceMotion ? 'reduced' : 'normal'
+  );
+  const [timingMode, setTimingMode] = useState<SpringstackTimingMode>(reduceMotion ? 'reduced' : 'normal');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [settingsShown, setSettingsShown] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const renderers = useMemo(buildRenderers, []);
+  const previewMode = resolvePreviewMode(mode);
+
+  useEffect(() => {
+    if (motionPreset === 'system') {
+      setTimingMode(reduceMotion ? 'reduced' : 'normal');
+    } else if (motionPreset === 'off') {
+      setTimingMode('off');
+    }
+  }, [reduceMotion]);
+
+  useEffect(() => {
+    if (motionPreset === 'off') {
+      document.documentElement.dataset.motion = 'off';
+    } else {
+      delete document.documentElement.dataset.motion;
+    }
+  }, [motionPreset]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const durationMap: Record<SpringstackTimingMode, number> = {
+      normal: 220,
+      reduced: 80,
+      gratuitous: 220,
+      slow: 880,
+      off: 0
+    };
+    root.style.setProperty('--theme-transition-duration', `${durationMap[timingMode]}ms`);
+    return () => {
+      root.style.removeProperty('--theme-transition-duration');
+    };
+  }, [timingMode]);
+
+  const selectorMotion = useMemo(() => {
+    const baseDuration = 560;
+    const baseEnter = 130;
+    const presets: Record<SpringstackTimingMode, { durationMs: number; ease: string; enterDurationMs: number }> = {
+      normal: { durationMs: baseDuration, ease: 'back.out(1.6)', enterDurationMs: baseEnter },
+      reduced: { durationMs: 200, ease: 'power2.out', enterDurationMs: 80 },
+      gratuitous: { durationMs: baseDuration, ease: 'elastic.out(1.6, 0.5)', enterDurationMs: baseEnter },
+      slow: { durationMs: baseDuration * 4, ease: 'back.out(1.6)', enterDurationMs: baseEnter * 4 },
+      off: { durationMs: 0, ease: 'none', enterDurationMs: 0 }
+    };
+    return presets[timingMode];
+  }, [timingMode]);
+
+  useEffect(() => {
+    if (settingsOpen) {
+      setSettingsVisible(true);
+      const frame = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setSettingsShown(true));
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+    setSettingsShown(false);
+    const timeout = window.setTimeout(() => setSettingsVisible(false), 500);
+    return () => window.clearTimeout(timeout);
+  }, [settingsOpen]);
+
+  const handleCloseSettings = () => {
+    setSettingsOpen(false);
+  };
+
+  const handlePushNext = async (helpers: SpringstackHelpers<DemoNodeData>) => {
+    const activeNode = helpers.stack[helpers.stack.length - 1];
+    if (activeNode.kind === 'root') {
+      const corpus = demoCorpora[0];
+      const sourceEl = rootRef.current?.querySelector(
+        `[data-item-card][data-item-type=\"corpus\"][data-item-id=\"${corpus.id}\"]`
+      ) as HTMLElement | null;
+      await helpers.push(buildCorpusNode(corpus), sourceEl);
+      return;
+    }
+    if (activeNode.kind === 'corpus') {
+      const corpus = resolveCurrentCorpus(helpers.stack);
+      const item = corpus ? (demoItems[corpus.id] ?? [])[0] : null;
+      if (!item || !corpus) return;
+      const sourceEl = rootRef.current?.querySelector(
+        `[data-item-card][data-item-type=\"item\"][data-item-id=\"${item.id}\"]`
+      ) as HTMLElement | null;
+      await helpers.push(buildItemNode(item, corpus), sourceEl);
+      return;
+    }
+    if (activeNode.kind === 'item') {
+      const corpus = resolveCurrentCorpus(helpers.stack);
+      const item = corpus ? resolveCurrentItem(helpers.stack, corpus) : null;
+      if (!item) return;
+      const sourceEl = rootRef.current?.querySelector(
+        `[data-item-card][data-item-type=\"detail\"][data-item-id=\"detail-${item.id}\"]`
+      ) as HTMLElement | null;
+      await helpers.push(buildDetailNode(item), sourceEl);
+    }
+  };
+
+  const handleDeepLink = async (helpers: SpringstackHelpers<DemoNodeData>) => {
+    const corpus = demoCorpora[1];
+    const item = demoItems[corpus.id]?.[1];
+    if (!item) return;
+    const path = [buildRootNode(), buildCorpusNode(corpus), buildItemNode(item, corpus)];
+    await helpers.drillTo(path);
+  };
+
+  const ItemsPanel = ({
+    helpers,
+    currentCorpus,
+    currentItems
+  }: {
+    helpers: SpringstackHelpers<DemoNodeData>;
+    currentCorpus: Corpus | null;
+    currentItems: CorpusItem[];
+  }) => {
+    useEffect(() => {
+      if (helpers.activeDepth === 1 && currentCorpus) {
+        helpers.notifyPanelReady(`corpus:${currentCorpus.id}:items`);
+      }
+    }, [helpers.activeDepth, currentCorpus]);
+
+    return (
+      <div
+        className="basis-full shrink-0"
+        {...helpers.getPanelProps(
+          currentCorpus ? `corpus:${currentCorpus.id}:items` : 'corpus:unknown:items'
+        )}
+      >
+        <div className="flex h-full flex-col gap-2 p-1">
+          <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">
+            <span>{currentItems.length} items in {currentCorpus?.name ?? '—'}</span>
+          </div>
+          <div className="grid gap-2 md:grid-cols-2">
+            {currentItems.map(item => {
+              if (!currentCorpus) return null;
+              const node = buildItemNode(item, currentCorpus);
+              const cardProps = helpers.getCardProps(node, {
+                onSelect: (_node, sourceEl) => helpers.push(node, sourceEl)
+              });
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  {...cardProps}
+                  className={mergeClass(
+                    'flex w-full items-start gap-2 rounded-md bg-muted p-2 text-left text-sm transition-colors hover:bg-hover',
+                    cardProps.className
+                  )}
+                  data-enter-item
+                >
+                  <div data-card-shell="true" className="flex w-full items-start gap-2">
+                    <div data-card-content="true" className="flex w-full items-start gap-2">
+                      {(renderers.list?.item ?? renderers.list?.default)?.(node)}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div ref={rootRef} className="relative min-h-screen overflow-hidden">
+      <div className="pointer-events-none absolute left-0 top-0 h-64 w-64 rounded-md bg-muted/60" />
+      <div className="pointer-events-none absolute right-8 top-24 h-40 w-72 rounded-md bg-card/70" />
+      <div className="pointer-events-none absolute bottom-10 left-16 h-32 w-56 rounded-md bg-muted/50" />
+
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col px-2 py-2">
+        <Springstack<DemoNodeData>
+          initialStack={[buildRootNode()]}
+          renderers={renderers}
+          enterAnimation={{
+            durationMs: selectorMotion.durationMs * 0.25,
+            staggerMs:
+              timingMode === 'slow'
+                ? selectorMotion.durationMs * 0.6
+                : timingMode === 'gratuitous'
+                  ? selectorMotion.durationMs * 0.3
+                  : timingMode === 'normal'
+                    ? selectorMotion.durationMs * 0.22
+                    : timingMode === 'reduced'
+                      ? selectorMotion.durationMs * 0.15
+                      : 0,
+            selector: '[data-enter-item]'
+          }}
+          timingMode={timingMode}
+          className="flex flex-1 flex-col"
+          renderHeader={() => (
+            <div className="flex items-center justify-between rounded-md bg-card p-2">
+              <div className="flex items-center gap-1 text-sm font-semibold text-foreground pl-2">
+                <BookOpen className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />
+                Springstack
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                className="flex items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Settings className="h-4 w-4" strokeWidth={2.25} />
+              </button>
+            </div>
+          )}
+          renderOverlay={() => {
+            if (!settingsVisible) return null;
+            return (
+              <div
+                className={mergeClass(
+                  'absolute inset-0',
+                  settingsShown ? 'pointer-events-auto' : 'pointer-events-none'
+                )}
+                onClick={handleCloseSettings}
+              >
+                <div
+                  className={mergeClass(
+                    'absolute inset-0 bg-background/60 backdrop-blur-sm transition-opacity duration-300',
+                    settingsShown ? 'opacity-100' : 'opacity-0'
+                  )}
+                />
+                <div
+                  className={mergeClass(
+                    'absolute inset-0 rounded-md bg-card p-2 transition-transform duration-500 ease-out',
+                    settingsShown ? 'translate-y-0' : 'translate-y-full'
+                  )}
+                  onClick={event => event.stopPropagation()}
+                >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    Settings
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCloseSettings}
+                    className="flex items-center gap-1 text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground pl-8"
+                  >
+                    <X className="h-4 w-4" strokeWidth={2.25} />
+                    Close
+                  </button>
+                </div>
+
+                <div className="mt-6 grid gap-6 md:grid-cols-2">
+                  <div className="flex flex-col gap-6">
+                    <div>
+                      <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Mode</h3>
+                      <AnimatedSelector
+                        name="mode"
+                        value={mode}
+                        onChange={value => setMode(value as 'light' | 'dark' | 'system')}
+                        layout="grid"
+                        motionDisabled={motionPreset === 'off'}
+                        motionDurationMs={selectorMotion.durationMs}
+                        motionEase={selectorMotion.ease}
+                        motionEnterDurationMs={selectorMotion.enterDurationMs}
+                        options={[
+                          { id: 'light', label: 'Light', icon: Sun },
+                          { id: 'dark', label: 'Dark', icon: Moon },
+                          { id: 'system', label: 'System', icon: Monitor }
+                        ]}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Motion</h3>
+                    <AnimatedSelector
+                      name="motion"
+                      value={motionPreset}
+                      onChange={value => {
+                        const preset = value as typeof motionPreset;
+                        setMotionPreset(preset);
+                        if (preset === 'system') {
+                          setTimingMode(reduceMotion ? 'reduced' : 'normal');
+                          return;
+                        }
+                        if (preset === 'off') {
+                          setTimingMode('off');
+                          return;
+                        }
+                        setTimingMode(preset as SpringstackTimingMode);
+                      }}
+                      layout="compact"
+                      className="grid-cols-3"
+                      motionDisabled={motionPreset === 'off'}
+                      motionDurationMs={selectorMotion.durationMs}
+                      motionEase={selectorMotion.ease}
+                      motionEnterDurationMs={selectorMotion.enterDurationMs}
+                      options={[
+                        { id: 'normal', label: 'Normal', icon: Zap },
+                        { id: 'reduced', label: 'Reduced', icon: ZapOff },
+                        { id: 'system', label: 'System', icon: Monitor },
+                        { id: 'gratuitous', label: 'Gratuitous', icon: PlugZap },
+                        { id: 'slow', label: 'Slow', icon: Bug },
+                        { id: 'off', label: 'Off', icon: ZapOff }
+                      ]}
+                    />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Theme</h3>
+                    <AnimatedSelector
+                      name="theme"
+                      value={theme}
+                      onChange={value => setTheme(value as 'neutral' | 'cool' | 'warm')}
+                      layout="grid"
+                      className="grid-cols-3"
+                      motionDisabled={motionPreset === 'off'}
+                      motionDurationMs={selectorMotion.durationMs}
+                      motionEase={selectorMotion.ease}
+                      motionEnterDurationMs={selectorMotion.enterDurationMs}
+                      options={[
+                        {
+                          id: 'neutral',
+                          label: 'Neutral',
+                          preview: <ThemeStripePreview themeId="neutral" resolvedMode={previewMode} />
+                        },
+                        {
+                          id: 'cool',
+                          label: 'Cool',
+                          preview: <ThemeStripePreview themeId="cool" resolvedMode={previewMode} />
+                        },
+                        {
+                          id: 'warm',
+                          label: 'Warm',
+                          preview: <ThemeStripePreview themeId="warm" resolvedMode={previewMode} />
+                        }
+                      ]}
+                    />
+                  </div>
+                </div>
+                </div>
+              </div>
+            );
+          }}
+          renderPanels={helpers => {
+            const currentCorpus = resolveCurrentCorpus(helpers.stack);
+            const currentItems = currentCorpus ? demoItems[currentCorpus.id] ?? [] : [];
+            const currentItem = resolveCurrentItem(helpers.stack, currentCorpus);
+
+            return (
+              <>
+                <div className="basis-full shrink-0" {...helpers.getPanelProps('root:corpora')}>
+                  <div className="flex h-full flex-col gap-2 p-1">
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">Corpora</div>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      {demoCorpora.map(corpus => {
+                        const node = buildCorpusNode(corpus);
+                        const cardProps = helpers.getCardProps(node, {
+                          onSelect: (_node, sourceEl) => helpers.push(node, sourceEl)
+                        });
+                        return (
+                          <button
+                            key={corpus.id}
+                            type="button"
+                            {...cardProps}
+                            className={mergeClass(
+                              'flex w-full items-start gap-2 rounded-md bg-muted p-2 text-left text-sm transition-colors hover:bg-hover',
+                              cardProps.className
+                            )}
+                            data-enter-item
+                          >
+                            <div data-card-shell="true" className="flex w-full items-start gap-2">
+                              <div data-card-content="true" className="flex w-full items-start gap-2">
+                                {(renderers.list?.corpus ?? renderers.list?.default)?.(node)}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <ItemsPanel helpers={helpers} currentCorpus={currentCorpus} currentItems={currentItems} />
+
+                <div className="basis-full shrink-0" {...helpers.getPanelProps('item:detail')}>
+                  <div className="flex h-full flex-col gap-2 p-1">
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">Item</div>
+                    <div className="rounded-md bg-muted p-2">
+                      <div className="flex items-start gap-1">
+                        <FileText className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />
+                        <div className="text-sm font-semibold text-foreground">{currentItem?.title ?? '—'}</div>
+                      </div>
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        {currentItem?.mediaType ?? '—'} · {currentItem?.sizeKb ?? 0} KB
+                      </div>
+                    </div>
+                    {currentItem && (() => {
+                      const node = buildDetailNode(currentItem);
+                      const cardProps = helpers.getCardProps(node, {
+                        onSelect: (_node, sourceEl) => helpers.push(node, sourceEl)
+                      });
+                      return (
+                        <button
+                          type="button"
+                          {...cardProps}
+                          className={mergeClass(
+                            'flex w-full items-start gap-2 rounded-md bg-muted p-2 text-left text-sm transition-colors hover:bg-hover',
+                            cardProps.className
+                          )}
+                        >
+                          <div data-card-shell="true" className="flex w-full items-start gap-2">
+                            <div data-card-content="true" className="flex w-full items-start gap-2">
+                              {(renderers.list?.detail ?? renderers.list?.default)?.(node)}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                <div className="basis-full shrink-0" {...helpers.getPanelProps('detail:evidence')}>
+                  <div className="flex h-full flex-col gap-2 p-1">
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">Detail</div>
+                    <div className="flex flex-col gap-2 rounded-md bg-muted p-2">
+                      <div className="flex items-start gap-1">
+                        <Layers className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />
+                        <span className="text-sm font-semibold text-foreground">Evidence pack</span>
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {['Primary excerpt', 'Provenance', 'Context budget', 'Rerank trace'].map(label => (
+                          <div key={label} className="rounded-md bg-card p-2 text-xs text-muted-foreground">
+                            {label}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-xs text-muted-foreground">This panel is the terminal node. Pop to return.</div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            );
+          }}
+          renderFooter={helpers => {
+            const activeNode = helpers.stack[helpers.stack.length - 1];
+            return (
+              <>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground pl-8">Controls</div>
+                  <button
+                    type="button"
+                    onClick={() => handlePushNext(helpers)}
+                    disabled={helpers.isTransitioning || activeNode.kind === 'detail'}
+                    className="flex items-center gap-2 rounded-md bg-card px-3 py-2 text-sm text-foreground transition-colors hover:bg-hover disabled:opacity-40"
+                  >
+                    <ChevronRight className="h-4 w-4" strokeWidth={2.25} />
+                    Push next level
+                  </button>
+                  <button
+                    type="button"
+                    onClick={helpers.pop}
+                    disabled={helpers.isTransitioning || helpers.stack.length <= 1}
+                    className="flex items-center gap-2 rounded-md bg-card px-3 py-2 text-sm text-foreground transition-colors hover:bg-hover disabled:opacity-40"
+                  >
+                    <ChevronLeft className="h-4 w-4" strokeWidth={2.25} />
+                    Pop level
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeepLink(helpers)}
+                    disabled={helpers.isTransitioning}
+                    className="flex items-center gap-2 rounded-md bg-card px-3 py-2 text-sm text-foreground transition-colors hover:bg-hover disabled:opacity-40"
+                  >
+                    <Play className="h-4 w-4" strokeWidth={2.25} />
+                    Load deep link
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => helpers.setStack([buildRootNode()])}
+                    disabled={helpers.isTransitioning}
+                    className="flex items-center gap-2 rounded-md bg-card px-3 py-2 text-sm text-foreground transition-colors hover:bg-hover disabled:opacity-40"
+                  >
+                    <RotateCcw className="h-4 w-4" strokeWidth={2.25} />
+                    Reset
+                  </button>
+                </div>
+
+              </>
+            );
+          }}
+        />
+      </div>
+
+    </div>
+  );
+}

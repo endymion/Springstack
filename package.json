@@ -1,0 +1,9 @@
+{
+  "name": "springstack",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "infra"
+  ]
+}
