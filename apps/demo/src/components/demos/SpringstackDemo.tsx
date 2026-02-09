@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Bug,
+  FileStack,
   FileText,
   Folder,
   Layers,
@@ -54,26 +55,26 @@ interface CorpusItem {
 }
 
 const demoCorpora: Corpus[] = [
-  { id: 'c-archive', name: 'Zettelkasten', metaLine: '12 collections · 3.2 GB' },
-  { id: 'c-patristics', name: 'Patristics', metaLine: '9 collections · 2.1 GB' },
-  { id: 'c-iconography', name: 'Iconography', metaLine: '7 collections · 1.6 GB' }
+  { id: 'c-archive', name: 'X-Files Cabinet A', metaLine: '13 locked folders · 4.4 GB' },
+  { id: 'c-patristics', name: 'Vault of Unfiled Anomalies', metaLine: '9 sealed cases · 2.7 GB' },
+  { id: 'c-iconography', name: 'Do Not Open Drawer', metaLine: '7 forbidden bundles · 1.9 GB' }
 ];
 
 const demoItems: Record<string, CorpusItem[]> = {
   'c-archive': [
-    { id: 'i-001', title: 'Card Index Notes', mediaType: 'text/markdown', sizeKb: 84 },
-    { id: 'i-002', title: 'Threaded Themes', mediaType: 'application/pdf', sizeKb: 412 },
-    { id: 'i-003', title: 'Footnote Garden', mediaType: 'text/plain', sizeKb: 29 }
+    { id: 'i-001', title: 'Black Tape Memo', mediaType: 'text/markdown', sizeKb: 84 },
+    { id: 'i-002', title: 'Locker Key That Opens Nothing', mediaType: 'application/pdf', sizeKb: 412 },
+    { id: 'i-003', title: 'Redacted Map of the Basement', mediaType: 'text/plain', sizeKb: 29 }
   ],
   'c-patristics': [
-    { id: 'i-101', title: 'Homilies Draft', mediaType: 'application/pdf', sizeKb: 732 },
-    { id: 'i-102', title: 'Synod Memo', mediaType: 'text/markdown', sizeKb: 56 },
-    { id: 'i-103', title: 'Lexicon Table', mediaType: 'text/csv', sizeKb: 18 }
+    { id: 'i-101', title: 'Glow-in-the-Dark Moss Sample', mediaType: 'application/pdf', sizeKb: 732 },
+    { id: 'i-102', title: 'Half-Finished Incident Log', mediaType: 'text/markdown', sizeKb: 56 },
+    { id: 'i-103', title: 'Audio: Footsteps with No Source', mediaType: 'text/csv', sizeKb: 18 }
   ],
   'c-iconography': [
-    { id: 'i-201', title: 'Mosaic Study', mediaType: 'image/png', sizeKb: 1240 },
-    { id: 'i-202', title: 'Icon Series Notes', mediaType: 'text/markdown', sizeKb: 67 },
-    { id: 'i-203', title: 'Panel Restoration', mediaType: 'application/pdf', sizeKb: 503 }
+    { id: 'i-201', title: 'Photograph That Refuses to Focus', mediaType: 'image/png', sizeKb: 1240 },
+    { id: 'i-202', title: 'Handwritten Warning: DO NOT STACK', mediaType: 'text/markdown', sizeKb: 67 },
+    { id: 'i-203', title: 'Blueprint for a Door That Is Not There', mediaType: 'application/pdf', sizeKb: 503 }
   ]
 };
 
@@ -104,7 +105,7 @@ const ThemeStripePreview = ({
 const buildRootNode = (): SpringstackNode<DemoNodeData> => ({
   id: 'root',
   kind: 'root',
-  title: 'Springstack',
+  title: 'Library',
   data: { metaLine: `${demoCorpora.length} corpora` }
 });
 
@@ -160,14 +161,14 @@ const buildRenderers = (): SpringstackRenderers<DemoNodeData> => {
 
   return {
     list: {
-      root: node => renderCard(<Layers className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
+      root: node => renderCard(<BookOpen className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
       corpus: node => renderCard(<Folder className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
       item: node => renderCard(<FileText className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
       detail: node => renderCard(<Link2 className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
       default: node => renderCard(<Layers className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node)
     },
     crumb: {
-      root: node => renderCard(<Layers className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
+      root: node => renderCard(<BookOpen className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
       corpus: node => renderCard(<Folder className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
       item: node => renderCard(<FileText className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
       detail: node => renderCard(<Link2 className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
@@ -383,7 +384,7 @@ export function SpringstackDemo() {
           renderHeader={() => (
             <div className="flex items-center justify-between rounded-md bg-card p-2">
               <div className="flex items-center gap-1 text-sm font-semibold text-foreground pl-2">
-                <BookOpen className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />
+                <FileStack className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />
                 Springstack
               </div>
               <button
@@ -400,7 +401,7 @@ export function SpringstackDemo() {
             return (
               <div
                 className={mergeClass(
-                  'absolute inset-0',
+                  'fixed inset-0 z-[1000]',
                   settingsShown ? 'pointer-events-auto' : 'pointer-events-none'
                 )}
                 onClick={handleCloseSettings}

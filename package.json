@@ -5,5 +5,17 @@
     "apps/*",
     "packages/*",
     "infra"
-  ]
+  ],
+  "scripts": {
+    "test": "cucumber-js",
+    "release": "semantic-release"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^10.7.0",
+    "@semantic-release/commit-analyzer": "^11.1.0",
+    "@semantic-release/github": "^10.3.5",
+    "@semantic-release/npm": "^11.0.3",
+    "@semantic-release/release-notes-generator": "^12.1.0",
+    "semantic-release": "^23.0.8"
+  }
 }

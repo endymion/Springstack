@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "springstack": "workspace:*",
+    "springstack": "file:../../packages/springstack",
     "@gsap/react": "^2.1.0",
     "@radix-ui/colors": "^3.0.0",
     "clsx": "^2.1.1",

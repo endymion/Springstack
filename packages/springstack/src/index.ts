@@ -10,5 +10,6 @@ export type {
   SpringstackSlots,
   SpringstackSlotRenderer,
   SpringstackTimingConfig,
-  SpringstackTimingMode
+  SpringstackTimingMode,
+  SpringstackRoutingConfig
 } from './types';

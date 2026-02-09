@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import type {
   SpringstackHelpers,
@@ -6,7 +7,8 @@ import type {
   SpringstackNode,
   SpringstackRenderers,
   SpringstackSlotRenderer,
-  SpringstackEnterAnimationConfig
+  SpringstackEnterAnimationConfig,
+  SpringstackRoutingConfig
 } from './types';
 import { useSpringstackController } from './useSpringstackController';
 
@@ -82,6 +84,69 @@ const prepareGhost = (shell: HTMLElement) => {
   };
 };
 
+const normalizeBasePath = (basePath?: string) => {
+  if (!basePath || basePath === '/') return '';
+  const trimmed = basePath.startsWith('/') ? basePath : `/${basePath}`;
+  return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+};
+
+const stripBasePath = (path: string, basePath?: string) => {
+  if (!basePath) return path;
+  if (path.startsWith(basePath)) {
+    const stripped = path.slice(basePath.length);
+    if (!stripped) return '/';
+    return stripped.startsWith('/') ? stripped : `/${stripped}`;
+  }
+  return path;
+};
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '')
+    .slice(0, 64);
+
+const formatSegment = (node: SpringstackNode<unknown>) => {
+  const title = typeof node.title === 'string' ? node.title : '';
+  const slug = title ? slugify(title) : '';
+  const id = node.id;
+  if (slug && id) return `${slug}--${id}`;
+  return id || slug;
+};
+
+const parseSegmentId = (segment: string) => {
+  const decoded = decodeURIComponent(segment);
+  const parts = decoded.split('--');
+  return parts.length > 1 ? parts[parts.length - 1] : decoded;
+};
+
+const buildDefaultPath = (stack: SpringstackNode<unknown>[]) => {
+  if (stack.length === 0) return '/';
+  const withoutRoot =
+    stack[0]?.kind === 'root' ? stack.slice(1) : stack;
+  if (withoutRoot.length === 0) return '/';
+  return withoutRoot
+    .map(node => `/${node.kind}/${encodeURIComponent(formatSegment(node))}`)
+    .join('') || '/';
+};
+
+const defaultParsePath = (path: string): SpringstackNode<unknown>[] => {
+  const clean = path.split('?')[0].split('#')[0];
+  const segments = clean.replace(/^\/+/, '').split('/').filter(Boolean);
+  const nodes: SpringstackNode<unknown>[] = [];
+  for (let i = 0; i + 1 < segments.length; i += 2) {
+    nodes.push({
+      kind: segments[i],
+      id: parseSegmentId(segments[i + 1])
+    });
+  }
+  return nodes;
+};
+
+const stackEquals = (a: SpringstackNode<unknown>[], b: SpringstackNode<unknown>[]) =>
+  a.length === b.length && a.every((node, index) => node.kind === b[index]?.kind && node.id === b[index]?.id);
+
 export function Springstack<TData>(props: SpringstackProps<TData>) {
   const {
     initialStack,
@@ -93,6 +158,8 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     enterAnimation,
     timingMode: timingModeProp,
     timingConfig: timingConfigProp,
+    routing,
+    overlayPortal = true,
     className,
     onStackChange
   } = props;
@@ -115,6 +182,9 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     direction: 'toCrumb' | 'toList';
   } | null>(null);
   const navDirectionRef = useRef<'forward' | 'back' | 'none'>('none');
+  const updateModeRef = useRef<'push' | 'replace'>('push');
+  const isApplyingRouteRef = useRef(false);
+  const lastPathRef = useRef<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const contentAreaRef = useRef<HTMLDivElement>(null);
@@ -135,6 +205,7 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       popTo: controller.popTo,
       drillTo: controller.drillTo,
       setStack: nextStack => {
+        updateModeRef.current = 'replace';
         controller.setStack(nextStack);
         controller.setActiveDepth(Math.max(0, nextStack.length - 1));
         setHiddenCardId(null);
@@ -192,6 +263,116 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       timingConfig.enterEase
     ]
   );
+
+  const routingConfig: SpringstackRoutingConfig<TData> = routing ?? {};
+  const routingEnabled =
+    routingConfig.enabled ?? (typeof window !== 'undefined' && typeof history !== 'undefined');
+  const basePath = normalizeBasePath(routingConfig.basePath);
+  const useHash = routingConfig.useHash ?? false;
+  const parsePath = (path: string) => {
+    const parsed = (routingConfig.parse ?? defaultParsePath)(stripBasePath(path, basePath)) as SpringstackNode<TData>[];
+    if (parsed.length === 0) return initialStack;
+    const root = initialStack[0];
+    if (!root) return parsed;
+    const normalized =
+      parsed[0]?.kind === root.kind && parsed[0]?.id === root.id
+        ? parsed.slice(1)
+        : parsed[0]?.kind === 'root'
+          ? parsed.slice(1)
+          : parsed;
+    return [root, ...normalized];
+  };
+  const serializeStack = (nextStack: SpringstackNode<TData>[]) => {
+    const custom = routingConfig.serialize?.(nextStack);
+    const raw = custom ?? buildDefaultPath(nextStack as SpringstackNode<unknown>[]);
+    const prefixed = basePath ? `${basePath}${raw === '/' ? '' : raw}` : raw;
+    return prefixed || '/';
+  };
+  const getLocationPath = () => {
+    if (useHash) {
+      const hash = window.location.hash.replace(/^#/, '');
+      return hash || '/';
+    }
+    return window.location.pathname || '/';
+  };
+  const updateUrl = (path: string, mode: 'push' | 'replace') => {
+    if (useHash) {
+      if (mode === 'replace') {
+        history.replaceState(null, '', `#${path}`);
+      } else {
+        window.location.hash = path;
+      }
+      return;
+    }
+    if (mode === 'replace') {
+      history.replaceState(null, '', path);
+    } else {
+      history.pushState(null, '', path);
+    }
+  };
+  const resetStack = (nextStack: SpringstackNode<TData>[]) => {
+    controller.setStack(nextStack);
+    controller.setActiveDepth(Math.max(0, nextStack.length - 1));
+    setHiddenCardId(null);
+    setHiddenCardDepth(null);
+    setMorphing(null);
+  };
+
+  useEffect(() => {
+    if (!routingEnabled || typeof window === 'undefined') return;
+    let cancelled = false;
+    const currentPath = getLocationPath();
+    lastPathRef.current = currentPath;
+    const parsed = parsePath(currentPath);
+    if (parsed.length === 0 || stackEquals(parsed as SpringstackNode<unknown>[], initialStack as SpringstackNode<unknown>[])) {
+      return;
+    }
+    isApplyingRouteRef.current = true;
+    updateModeRef.current = 'replace';
+    controller
+      .drillTo(parsed)
+      .finally(() => {
+        if (cancelled) return;
+        isApplyingRouteRef.current = false;
+        lastPathRef.current = currentPath;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!routingEnabled || typeof window === 'undefined') return;
+    const handler = () => {
+      const path = getLocationPath();
+      const parsed = parsePath(path);
+      isApplyingRouteRef.current = true;
+      updateModeRef.current = 'replace';
+      const apply = async () => {
+        if (parsed.length === 0) {
+          resetStack(initialStack);
+        } else {
+          await controller.drillTo(parsed);
+        }
+        lastPathRef.current = path;
+        isApplyingRouteRef.current = false;
+      };
+      void apply();
+    };
+    const eventName = useHash ? 'hashchange' : 'popstate';
+    window.addEventListener(eventName, handler);
+    return () => window.removeEventListener(eventName, handler);
+  }, [routingEnabled, useHash, basePath]);
+
+  useEffect(() => {
+    if (!routingEnabled || typeof window === 'undefined') return;
+    if (isApplyingRouteRef.current) return;
+    const path = serializeStack(stack);
+    if (path === lastPathRef.current) return;
+    updateUrl(path, updateModeRef.current);
+    lastPathRef.current = path;
+    updateModeRef.current = 'push';
+  }, [stack, routingEnabled]);
 
   useLayoutEffect(() => {
     if (!trackRef.current) return;
@@ -635,6 +816,15 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
   });
 
   const overlay = renderOverlay ? renderOverlay(helpers) : null;
+  const overlayNode =
+    overlay && overlayPortal !== false && typeof document !== 'undefined'
+      ? createPortal(
+          <div className="fixed inset-0 z-[1000] pointer-events-auto">{overlay}</div>,
+          document.body
+        )
+      : overlay
+        ? <div className="absolute inset-0 z-50">{overlay}</div>
+        : null;
 
   return (
     <div
@@ -668,7 +858,7 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
         </div>
       </div>
       {renderFooter?.(helpers)}
-      {overlay ? <div className="absolute inset-0 z-50">{overlay}</div> : null}
+      {overlayNode}
     </div>
   );
 }

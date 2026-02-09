@@ -82,6 +82,14 @@ export interface SpringstackEnterAnimationConfig {
   staggerMs?: number;
 }
 
+export interface SpringstackRoutingConfig<TData = unknown> {
+  enabled?: boolean;
+  useHash?: boolean;
+  parse?: (path: string) => SpringstackNode<TData>[];
+  serialize?: (stack: SpringstackNode<TData>[]) => string;
+  basePath?: string;
+}
+
 export interface SpringstackProps<TData = unknown> {
   initialStack: SpringstackNode<TData>[];
   renderPanels: (helpers: SpringstackHelpers<TData>) => ReactNode;
@@ -92,6 +100,8 @@ export interface SpringstackProps<TData = unknown> {
   enterAnimation?: SpringstackEnterAnimationConfig;
   timingMode?: SpringstackTimingMode;
   timingConfig?: Partial<SpringstackTimingConfig>;
+  routing?: SpringstackRoutingConfig<TData>;
+  overlayPortal?: boolean;
   className?: string;
   onStackChange?: (stack: SpringstackNode<TData>[]) => void;
 }
