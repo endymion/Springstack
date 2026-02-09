@@ -3,7 +3,9 @@ export default {
   darkMode: ['class'],
   content: [
     './index.html',
-    './src/**/*.{js,ts,jsx,tsx}'
+    './src/**/*.{js,ts,jsx,tsx}',
+    '../../packages/springstack/src/**/*.{js,ts,jsx,tsx}',
+    './node_modules/springstack/dist/**/*.{js,mjs}'
   ],
   theme: {
     extend: {

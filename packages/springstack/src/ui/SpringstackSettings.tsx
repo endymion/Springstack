@@ -112,7 +112,7 @@ export function SpringstackSettings({
       />
       <div
         className={mergeClass(
-          'absolute inset-0 rounded-md bg-card p-2 transition-transform duration-500 ease-out',
+          'absolute inset-0 rounded-md bg-card p-2 transition-transform duration-500 ease-out overflow-y-auto',
           settingsShown ? 'translate-y-0' : 'translate-y-full'
         )}
         onClick={event => event.stopPropagation()}
