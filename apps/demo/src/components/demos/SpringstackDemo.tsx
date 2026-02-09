@@ -265,28 +265,48 @@ export function SpringstackDemo() {
 
   // Store helpers ref for deep link navigation
   const helpersRef = useRef<SpringstackHelpers<DemoNodeData> | null>(null);
+  const hasCalledDrillToRef = useRef(false);
 
   // Trigger deep link navigation exactly once on mount if needed
   useEffect(() => {
-    // Only run if we have a deep link target
-    if (!targetStackRef.current) {
+    console.log('[Demo] Deep link effect running', {
+      hasTarget: !!targetStackRef.current,
+      hasCalled: hasCalledDrillToRef.current
+    });
+
+    // Only run if we have a deep link target AND haven't called drillTo yet
+    if (!targetStackRef.current || hasCalledDrillToRef.current) {
       return;
     }
 
+    // Mark as called IMMEDIATELY to prevent StrictMode double-invoke
+    hasCalledDrillToRef.current = true;
+
     const targetStack = targetStackRef.current;
-    targetStackRef.current = null;
+    let cancelled = false;
+
+    console.log('[Demo] Starting drillTo sequence for', targetStack.map(n => n.id));
 
     // Wait for helpers to be available, then trigger drillTo
     const checkHelpers = () => {
+      if (cancelled) return;
+
       if (helpersRef.current) {
+        console.log('[Demo] Calling drillTo NOW');
+        console.trace('[Demo] drillTo call stack');
         helpersRef.current.drillTo(targetStack);
-      } else {
-        requestAnimationFrame(checkHelpers);
+        return; // STOP - we're done
       }
+
+      requestAnimationFrame(checkHelpers);
     };
 
     requestAnimationFrame(checkHelpers);
-  }, []); // Empty deps = run ONCE on mount
+
+    return () => {
+      cancelled = true;
+    };
+  }, []); // Empty deps = run ONCE on mount (but StrictMode will run it twice)
 
   const ItemsPanel = ({
     helpers,
@@ -399,17 +419,19 @@ export function SpringstackDemo() {
               </button>
             </div>
           )}
-          renderOverlay={() => (
-            <SpringstackSettings
-              open={settingsOpen}
-              onOpenChange={setSettingsOpen}
-              appearance={appearance}
-              motion={motion}
-              setAppearance={setAppearance}
-              setMotion={setMotion}
-              selectorMotion={selectorMotion}
-            />
-          )}
+          renderOverlay={() =>
+            settingsOpen ? (
+              <SpringstackSettings
+                open={settingsOpen}
+                onOpenChange={setSettingsOpen}
+                appearance={appearance}
+                motion={motion}
+                setAppearance={setAppearance}
+                setMotion={setMotion}
+                selectorMotion={selectorMotion}
+              />
+            ) : null
+          }
           renderPanels={helpers => {
             // Store helpers reference for deep link navigation (only once)
             if (!helpersRef.current) {
