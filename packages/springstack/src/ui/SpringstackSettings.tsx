@@ -112,123 +112,125 @@ export function SpringstackSettings({
       />
       <div
         className={mergeClass(
-          'absolute inset-0 rounded-md bg-card p-2 transition-transform duration-500 ease-out overflow-y-auto',
+          'absolute inset-0 rounded-md bg-card p-2 transition-transform duration-500 ease-out overflow-hidden',
           settingsShown ? 'translate-y-0' : 'translate-y-full'
         )}
         onClick={event => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 font-headline text-sm font-semibold text-foreground">Settings</div>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="flex items-center gap-1 text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground pl-6"
-          >
-            <X className="h-4 w-4" strokeWidth={2.25} />
-            Close
-          </button>
-        </div>
+        <div className="h-full overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 font-headline text-sm font-semibold text-foreground">Settings</div>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="flex items-center gap-1 text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground pl-6"
+            >
+              <X className="h-4 w-4" strokeWidth={2.25} />
+              Close
+            </button>
+          </div>
 
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
-          <div className="flex flex-col gap-6">
-            <div>
-              <h3 className="mb-2 font-eyebrow text-xs font-bold text-muted-foreground">Mode</h3>
-              <AnimatedSelector
-                name="mode"
-                value={appearance.mode}
-                onChange={value => setAppearance({ mode: value as SpringstackAppearanceState['mode'] })}
-                layout="grid"
-                motionDisabled={motionDisabled}
-                motionDurationMs={selectorMotion?.durationMs}
-                motionEase={selectorMotion?.ease}
-                motionEnterDurationMs={selectorMotion?.enterDurationMs}
-                options={[
-                  { id: 'light', label: 'Light', icon: Sun },
-                  { id: 'dark', label: 'Dark', icon: Moon },
-                  { id: 'system', label: 'System', icon: Monitor }
-                ]}
-              />
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            <div className="flex flex-col gap-6">
+              <div>
+                <h3 className="mb-2 font-eyebrow text-xs font-bold text-muted-foreground">Mode</h3>
+                <AnimatedSelector
+                  name="mode"
+                  value={appearance.mode}
+                  onChange={value => setAppearance({ mode: value as SpringstackAppearanceState['mode'] })}
+                  layout="grid"
+                  motionDisabled={motionDisabled}
+                  motionDurationMs={selectorMotion?.durationMs}
+                  motionEase={selectorMotion?.ease}
+                  motionEnterDurationMs={selectorMotion?.enterDurationMs}
+                  options={[
+                    { id: 'light', label: 'Light', icon: Sun },
+                    { id: 'dark', label: 'Dark', icon: Moon },
+                    { id: 'system', label: 'System', icon: Monitor }
+                  ]}
+                />
+              </div>
+              <div>
+                <h3 className="mb-2 font-eyebrow text-xs font-bold text-muted-foreground">Motion</h3>
+                <AnimatedSelector
+                  name="motion"
+                  value={motion.motionPreset}
+                  onChange={value => setMotion({ motionPreset: value as SpringstackMotionState['motionPreset'] })}
+                  layout="compact"
+                  className="grid-cols-3"
+                  motionDisabled={motionDisabled}
+                  motionDurationMs={selectorMotion?.durationMs}
+                  motionEase={selectorMotion?.ease}
+                  motionEnterDurationMs={selectorMotion?.enterDurationMs}
+                  options={[
+                    { id: 'normal', label: 'Normal', icon: Zap },
+                    { id: 'reduced', label: 'Reduced', icon: ZapOff },
+                    { id: 'system', label: 'System', icon: Monitor },
+                    { id: 'gratuitous', label: 'Gratuitous', icon: PlugZap },
+                    { id: 'slow', label: 'Slow', icon: Bug },
+                    { id: 'off', label: 'Off', icon: ZapOff }
+                  ]}
+                />
+              </div>
             </div>
             <div>
-              <h3 className="mb-2 font-eyebrow text-xs font-bold text-muted-foreground">Motion</h3>
+              <h3 className="mb-2 font-eyebrow text-xs font-bold text-muted-foreground">Theme</h3>
               <AnimatedSelector
-                name="motion"
-                value={motion.motionPreset}
-                onChange={value => setMotion({ motionPreset: value as SpringstackMotionState['motionPreset'] })}
-                layout="compact"
+                name="theme"
+                value={appearance.theme}
+                onChange={value => setAppearance({ theme: value as SpringstackAppearanceState['theme'] })}
+                layout="grid"
                 className="grid-cols-3"
                 motionDisabled={motionDisabled}
                 motionDurationMs={selectorMotion?.durationMs}
                 motionEase={selectorMotion?.ease}
                 motionEnterDurationMs={selectorMotion?.enterDurationMs}
                 options={[
-                  { id: 'normal', label: 'Normal', icon: Zap },
-                  { id: 'reduced', label: 'Reduced', icon: ZapOff },
-                  { id: 'system', label: 'System', icon: Monitor },
-                  { id: 'gratuitous', label: 'Gratuitous', icon: PlugZap },
-                  { id: 'slow', label: 'Slow', icon: Bug },
-                  { id: 'off', label: 'Off', icon: ZapOff }
+                  {
+                    id: 'neutral',
+                    label: 'Neutral',
+                    preview: <ThemeStripePreview themeId="neutral" resolvedMode={resolvedMode} />
+                  },
+                  {
+                    id: 'cool',
+                    label: 'Cool',
+                    preview: <ThemeStripePreview themeId="cool" resolvedMode={resolvedMode} />
+                  },
+                  {
+                    id: 'warm',
+                    label: 'Warm',
+                    preview: <ThemeStripePreview themeId="warm" resolvedMode={resolvedMode} />
+                  }
                 ]}
               />
             </div>
           </div>
-          <div>
-            <h3 className="mb-2 font-eyebrow text-xs font-bold text-muted-foreground">Theme</h3>
+
+          <div className="mt-6">
+            <h3 className="mb-2 font-eyebrow text-xs font-bold text-muted-foreground">Typeface</h3>
             <AnimatedSelector
-              name="theme"
-              value={appearance.theme}
-              onChange={value => setAppearance({ theme: value as SpringstackAppearanceState['theme'] })}
+              name="typeface"
+              value={appearance.typeface}
+              onChange={value => setAppearance({ typeface: value })}
               layout="grid"
               className="grid-cols-3"
               motionDisabled={motionDisabled}
               motionDurationMs={selectorMotion?.durationMs}
               motionEase={selectorMotion?.ease}
               motionEnterDurationMs={selectorMotion?.enterDurationMs}
-              options={[
-                {
-                  id: 'neutral',
-                  label: 'Neutral',
-                  preview: <ThemeStripePreview themeId="neutral" resolvedMode={resolvedMode} />
-                },
-                {
-                  id: 'cool',
-                  label: 'Cool',
-                  preview: <ThemeStripePreview themeId="cool" resolvedMode={resolvedMode} />
-                },
-                {
-                  id: 'warm',
-                  label: 'Warm',
-                  preview: <ThemeStripePreview themeId="warm" resolvedMode={resolvedMode} />
-                }
-              ]}
+              options={springstackTypefacePresets.map(preset => ({
+                id: preset.id,
+                label: preset.name,
+                preview: (
+                  <TypefacePreview
+                    headline={preset.headline}
+                    body={preset.body}
+                    name={preset.name}
+                  />
+                )
+              }))}
             />
           </div>
-        </div>
-
-        <div className="mt-6">
-          <h3 className="mb-2 font-eyebrow text-xs font-bold text-muted-foreground">Typeface</h3>
-          <AnimatedSelector
-            name="typeface"
-            value={appearance.typeface}
-            onChange={value => setAppearance({ typeface: value })}
-            layout="grid"
-            className="grid-cols-3"
-            motionDisabled={motionDisabled}
-            motionDurationMs={selectorMotion?.durationMs}
-            motionEase={selectorMotion?.ease}
-            motionEnterDurationMs={selectorMotion?.enterDurationMs}
-            options={springstackTypefacePresets.map(preset => ({
-              id: preset.id,
-              label: preset.name,
-              preview: (
-                <TypefacePreview
-                  headline={preset.headline}
-                  body={preset.body}
-                  name={preset.name}
-                />
-              )
-            }))}
-          />
         </div>
       </div>
     </div>
