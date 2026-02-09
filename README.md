@@ -8,6 +8,14 @@ Springstack is a UI framework for **stack-based navigation** with animated bread
 npm install springstack
 ```
 
+## Prerequisites
+
+- Node.js 20+
+- React 18+ (peer dependency)
+- GSAP 3.12+ (peer dependency)
+- Tailwind CSS configured in your project
+- Radix UI color tokens (or equivalent CSS variables)
+
 ## Quickstart (Minimal App)
 
 The smallest useful setup renders a single panel and enables push/pop transitions.
@@ -31,6 +39,15 @@ export function App() {
     />
   );
 }
+```
+
+## Repository Structure
+
+```
+apps/demo/            - Reference implementation
+packages/springstack/ - Core library (published to npm)
+infra/                - AWS CDK for demo deployment
+features/             - BDD test specifications
 ```
 
 ## Mental Model / Invariants
