@@ -4,38 +4,29 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
-  Bug,
   FileStack,
   FileText,
   Folder,
   Layers,
   Link2,
-  Monitor,
-  Moon,
   Play,
-  PlugZap,
   RotateCcw,
-  Settings,
-  X,
-  Sun,
-  Zap,
-  ZapOff
+  Settings
 } from 'lucide-react';
 import {
   Springstack,
+  SpringstackSettings,
+  useSpringstackAppearance,
   type SpringstackHelpers,
   type SpringstackNode,
   type SpringstackRenderers,
   type SpringstackTimingMode
 } from 'springstack';
-import { useAppearance } from '@/lib/useAppearance';
-import { AnimatedSelector } from '@/components/ui/animated-selector';
-import { TypefaceSelector } from '@/components/ui/typeface-selector';
-import { typefacePairs } from '@/lib/typefacePairs';
+import { parsePathToStack, stackToPath } from '@/lib/routeUtils';
 
 type NodeKind = 'root' | 'corpus' | 'item' | 'detail';
 
-interface DemoNodeData {
+export interface DemoNodeData {
   corpusId?: string;
   itemId?: string;
   mediaType?: string;
@@ -43,26 +34,26 @@ interface DemoNodeData {
   metaLine?: string;
 }
 
-interface Corpus {
+export interface Corpus {
   id: string;
   name: string;
   metaLine: string;
 }
 
-interface CorpusItem {
+export interface CorpusItem {
   id: string;
   title: string;
   mediaType: string;
   sizeKb: number;
 }
 
-const demoCorpora: Corpus[] = [
+export const demoCorpora: Corpus[] = [
   { id: 'c-archive', name: 'X-Files Cabinet A', metaLine: '13 locked folders · 4.4 GB' },
   { id: 'c-patristics', name: 'Vault of Unfiled Anomalies', metaLine: '9 sealed cases · 2.7 GB' },
   { id: 'c-iconography', name: 'Do Not Open Drawer', metaLine: '7 forbidden bundles · 1.9 GB' }
 ];
 
-const demoItems: Record<string, CorpusItem[]> = {
+export const demoItems: Record<string, CorpusItem[]> = {
   'c-archive': [
     { id: 'i-001', title: 'Black Tape Memo', mediaType: 'text/markdown', sizeKb: 84 },
     { id: 'i-002', title: 'Locker Key That Opens Nothing', mediaType: 'application/pdf', sizeKb: 412 },
@@ -82,43 +73,22 @@ const demoItems: Record<string, CorpusItem[]> = {
 
 const mergeClass = (...classes: Array<string | undefined>) => classes.filter(Boolean).join(' ');
 
-const resolvePreviewMode = (mode: 'light' | 'dark' | 'system') => {
-  if (mode !== 'system') return mode;
-  if (typeof window === 'undefined') return 'light';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-};
 
-const ThemeStripePreview = ({
-  themeId,
-  resolvedMode
-}: {
-  themeId: 'neutral' | 'cool' | 'warm';
-  resolvedMode: 'light' | 'dark';
-}) => (
-  <div className={mergeClass(`theme-${themeId}`, resolvedMode, 'w-full')}>
-    <div className="flex h-6 w-full">
-      <div className="flex-1 bg-primary" />
-      <div className="flex-1 bg-secondary" />
-      <div className="flex-1 bg-status-true" />
-    </div>
-  </div>
-);
-
-const buildRootNode = (): SpringstackNode<DemoNodeData> => ({
+export const buildRootNode = (): SpringstackNode<DemoNodeData> => ({
   id: 'root',
   kind: 'root',
   title: 'Library',
   data: { metaLine: `${demoCorpora.length} corpora` }
 });
 
-const buildCorpusNode = (corpus: Corpus): SpringstackNode<DemoNodeData> => ({
+export const buildCorpusNode = (corpus: Corpus): SpringstackNode<DemoNodeData> => ({
   id: corpus.id,
   kind: 'corpus',
   title: corpus.name,
   data: { corpusId: corpus.id, metaLine: corpus.metaLine }
 });
 
-const buildItemNode = (item: CorpusItem, corpus: Corpus): SpringstackNode<DemoNodeData> => ({
+export const buildItemNode = (item: CorpusItem, corpus: Corpus): SpringstackNode<DemoNodeData> => ({
   id: item.id,
   kind: 'item',
   title: item.title,
@@ -131,7 +101,7 @@ const buildItemNode = (item: CorpusItem, corpus: Corpus): SpringstackNode<DemoNo
   }
 });
 
-const buildDetailNode = (item: CorpusItem): SpringstackNode<DemoNodeData> => ({
+export const buildDetailNode = (item: CorpusItem): SpringstackNode<DemoNodeData> => ({
   id: `detail-${item.id}`,
   kind: 'detail',
   title: 'Detail View',
@@ -179,65 +149,14 @@ const buildRenderers = (): SpringstackRenderers<DemoNodeData> => {
   };
 };
 
-const timingModes: Array<{ id: SpringstackTimingMode; label: string }> = [
-  { id: 'normal', label: 'Normal' },
-  { id: 'reduced', label: 'Reduced' },
-  { id: 'gratuitous', label: 'Gratuitous' },
-  { id: 'slow', label: 'Sslloooww' }
-];
-
-const MOTION_STORAGE_KEY = 'springstack-motion';
-
 export function SpringstackDemo() {
-  const { reduceMotion, theme, mode, typeface, setTheme, setMode, setReduceMotion, setTypeface } = useAppearance();
-  const [motionPreset, setMotionPreset] = useState<'normal' | 'reduced' | 'system' | 'gratuitous' | 'slow' | 'off'>(
-    () => {
-      if (typeof window === 'undefined') return 'system';
-      const stored = localStorage.getItem(MOTION_STORAGE_KEY);
-      if (!stored) return 'system';
-      if (stored === 'normal' || stored === 'reduced' || stored === 'system' || stored === 'gratuitous' || stored === 'slow' || stored === 'off') {
-        return stored;
-      }
-      return 'system';
-    }
-  );
-  const [timingMode, setTimingMode] = useState<SpringstackTimingMode>(() => {
-    if (typeof window === 'undefined') return reduceMotion ? 'reduced' : 'normal';
-    const stored = localStorage.getItem(MOTION_STORAGE_KEY);
-    if (stored === 'system') return reduceMotion ? 'reduced' : 'normal';
-    if (stored === 'off') return 'off';
-    if (stored === 'normal' || stored === 'reduced' || stored === 'gratuitous' || stored === 'slow') {
-      return stored;
-    }
-    return reduceMotion ? 'reduced' : 'normal';
-  });
+  const { appearance, motion, setAppearance, setMotion } = useSpringstackAppearance();
+  const { reduceMotion } = appearance;
+  const { timingMode } = motion;
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsVisible, setSettingsVisible] = useState(false);
-  const [settingsShown, setSettingsShown] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const isInitialMount = useRef(true);
   const renderers = useMemo(buildRenderers, []);
-  const previewMode = resolvePreviewMode(mode);
-
-  useEffect(() => {
-    if (motionPreset === 'system') {
-      setTimingMode(reduceMotion ? 'reduced' : 'normal');
-    } else if (motionPreset === 'off') {
-      setTimingMode('off');
-    }
-  }, [motionPreset, reduceMotion]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(MOTION_STORAGE_KEY, motionPreset);
-  }, [motionPreset]);
-
-  useEffect(() => {
-    if (motionPreset === 'off') {
-      document.documentElement.dataset.motion = 'off';
-    } else {
-      delete document.documentElement.dataset.motion;
-    }
-  }, [motionPreset]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -267,22 +186,6 @@ export function SpringstackDemo() {
     return presets[timingMode];
   }, [timingMode]);
 
-  useEffect(() => {
-    if (settingsOpen) {
-      setSettingsVisible(true);
-      const frame = requestAnimationFrame(() => {
-        requestAnimationFrame(() => setSettingsShown(true));
-      });
-      return () => cancelAnimationFrame(frame);
-    }
-    setSettingsShown(false);
-    const timeout = window.setTimeout(() => setSettingsVisible(false), 500);
-    return () => window.clearTimeout(timeout);
-  }, [settingsOpen]);
-
-  const handleCloseSettings = () => {
-    setSettingsOpen(false);
-  };
 
   const handlePushNext = async (helpers: SpringstackHelpers<DemoNodeData>) => {
     const activeNode = helpers.stack[helpers.stack.length - 1];
@@ -323,6 +226,68 @@ export function SpringstackDemo() {
     await helpers.drillTo(path);
   };
 
+  // Always start at root - we'll animate to deep link after mount
+  const initialStack = useMemo(() => [buildRootNode()], []);
+
+  // Parse URL and drill to target after mount
+  const targetStackRef = useRef<SpringstackNode<DemoNodeData>[] | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const builders = { buildRootNode, buildCorpusNode, buildItemNode, buildDetailNode };
+    const stack = parsePathToStack(window.location.pathname, demoCorpora, demoItems, builders);
+
+    // Invalid URL - redirect to root
+    if (!stack) {
+      if (window.location.pathname !== '/') {
+        window.history.replaceState(null, '', '/');
+      }
+      return;
+    }
+
+    // If it's not just root, store it for drillTo
+    if (stack.length > 1) {
+      targetStackRef.current = stack;
+    }
+  }, []);
+
+  // Handle browser back/forward
+  useEffect(() => {
+    const handlePopState = () => {
+      // Simple fallback: reload page when user uses back/forward
+      window.location.reload();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Store helpers ref for deep link navigation
+  const helpersRef = useRef<SpringstackHelpers<DemoNodeData> | null>(null);
+
+  // Trigger deep link navigation exactly once on mount if needed
+  useEffect(() => {
+    // Only run if we have a deep link target
+    if (!targetStackRef.current) {
+      return;
+    }
+
+    const targetStack = targetStackRef.current;
+    targetStackRef.current = null;
+
+    // Wait for helpers to be available, then trigger drillTo
+    const checkHelpers = () => {
+      if (helpersRef.current) {
+        helpersRef.current.drillTo(targetStack);
+      } else {
+        requestAnimationFrame(checkHelpers);
+      }
+    };
+
+    requestAnimationFrame(checkHelpers);
+  }, []); // Empty deps = run ONCE on mount
+
   const ItemsPanel = ({
     helpers,
     currentCorpus,
@@ -346,7 +311,7 @@ export function SpringstackDemo() {
         )}
       >
         <div className="flex h-full flex-col gap-2 p-2">
-          <div className="flex items-center justify-between font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-7">
+          <div className="flex items-center justify-between font-eyebrow text-xs text-muted-foreground pl-7">
             <span>{currentItems.length} items in {currentCorpus?.name ?? '—'}</span>
           </div>
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
@@ -389,8 +354,20 @@ export function SpringstackDemo() {
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col px-2 py-2">
         <Springstack<DemoNodeData>
-          initialStack={[buildRootNode()]}
+          initialStack={initialStack}
           renderers={renderers}
+          onStackChange={(stack) => {
+            // Skip URL update on initial mount
+            if (isInitialMount.current) {
+              isInitialMount.current = false;
+              return;
+            }
+
+            const newPath = stackToPath(stack, demoCorpora);
+            if (typeof window !== 'undefined' && window.location.pathname !== newPath) {
+              window.history.pushState(null, '', newPath);
+            }
+          }}
           enterAnimation={{
             durationMs: selectorMotion.durationMs * 0.25,
             staggerMs:
@@ -422,146 +399,23 @@ export function SpringstackDemo() {
               </button>
             </div>
           )}
-          renderOverlay={() => {
-            if (!settingsVisible) return null;
-            return (
-              <div
-                className={mergeClass(
-                  'fixed inset-0 z-[1000]',
-                  settingsShown ? 'pointer-events-auto' : 'pointer-events-none'
-                )}
-                onClick={handleCloseSettings}
-              >
-                <div
-                  className={mergeClass(
-                    'absolute inset-0 bg-background/60 backdrop-blur-sm transition-opacity duration-300',
-                    settingsShown ? 'opacity-100' : 'opacity-0'
-                  )}
-                />
-                <div
-                  className={mergeClass(
-                    'absolute inset-0 rounded-md bg-card p-2 transition-transform duration-500 ease-out',
-                    settingsShown ? 'translate-y-0' : 'translate-y-full'
-                  )}
-                  onClick={event => event.stopPropagation()}
-                >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 font-headline text-sm font-semibold text-foreground">
-                    Settings
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleCloseSettings}
-                    className="flex items-center gap-1 text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground pl-6"
-                  >
-                    <X className="h-4 w-4" strokeWidth={2.25} />
-                    Close
-                  </button>
-                </div>
-
-                <div className="mt-6 grid gap-6 md:grid-cols-2">
-                  <div className="flex flex-col gap-6">
-                    <div>
-                      <h3 className="mb-2 font-body text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Mode</h3>
-                      <AnimatedSelector
-                        name="mode"
-                        value={mode}
-                        onChange={value => setMode(value as 'light' | 'dark' | 'system')}
-                        layout="grid"
-                        motionDisabled={motionPreset === 'off'}
-                        motionDurationMs={selectorMotion.durationMs}
-                        motionEase={selectorMotion.ease}
-                        motionEnterDurationMs={selectorMotion.enterDurationMs}
-                        options={[
-                          { id: 'light', label: 'Light', icon: Sun },
-                          { id: 'dark', label: 'Dark', icon: Moon },
-                          { id: 'system', label: 'System', icon: Monitor }
-                        ]}
-                      />
-                    </div>
-                    <div>
-                      <h3 className="mb-2 font-body text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Motion</h3>
-                    <AnimatedSelector
-                      name="motion"
-                      value={motionPreset}
-                      onChange={value => {
-                        const preset = value as typeof motionPreset;
-                        setMotionPreset(preset);
-                        if (preset === 'system') {
-                          setTimingMode(reduceMotion ? 'reduced' : 'normal');
-                          return;
-                        }
-                        if (preset === 'off') {
-                          setTimingMode('off');
-                          return;
-                        }
-                        setTimingMode(preset as SpringstackTimingMode);
-                      }}
-                      layout="compact"
-                      className="grid-cols-3"
-                      motionDisabled={motionPreset === 'off'}
-                      motionDurationMs={selectorMotion.durationMs}
-                      motionEase={selectorMotion.ease}
-                      motionEnterDurationMs={selectorMotion.enterDurationMs}
-                      options={[
-                        { id: 'normal', label: 'Normal', icon: Zap },
-                        { id: 'reduced', label: 'Reduced', icon: ZapOff },
-                        { id: 'system', label: 'System', icon: Monitor },
-                        { id: 'gratuitous', label: 'Gratuitous', icon: PlugZap },
-                        { id: 'slow', label: 'Slow', icon: Bug },
-                        { id: 'off', label: 'Off', icon: ZapOff }
-                      ]}
-                    />
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="mb-2 font-body text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Theme</h3>
-                    <AnimatedSelector
-                      name="theme"
-                      value={theme}
-                      onChange={value => setTheme(value as 'neutral' | 'cool' | 'warm')}
-                      layout="grid"
-                      className="grid-cols-3"
-                      motionDisabled={motionPreset === 'off'}
-                      motionDurationMs={selectorMotion.durationMs}
-                      motionEase={selectorMotion.ease}
-                      motionEnterDurationMs={selectorMotion.enterDurationMs}
-                      options={[
-                        {
-                          id: 'neutral',
-                          label: 'Neutral',
-                          preview: <ThemeStripePreview themeId="neutral" resolvedMode={previewMode} />
-                        },
-                        {
-                          id: 'cool',
-                          label: 'Cool',
-                          preview: <ThemeStripePreview themeId="cool" resolvedMode={previewMode} />
-                        },
-                        {
-                          id: 'warm',
-                          label: 'Warm',
-                          preview: <ThemeStripePreview themeId="warm" resolvedMode={previewMode} />
-                        }
-                      ]}
-                    />
-                  </div>
-                </div>
-
-                {/* Typeface Selector - Full Width Section */}
-                <div className="mt-6">
-                  <h3 className="mb-2 font-body text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Typeface</h3>
-                  <TypefaceSelector
-                    options={typefacePairs}
-                    value={typeface}
-                    onChange={setTypeface}
-                    motionDisabled={motionPreset === 'off'}
-                  />
-                </div>
-                </div>
-              </div>
-            );
-          }}
+          renderOverlay={() => (
+            <SpringstackSettings
+              open={settingsOpen}
+              onOpenChange={setSettingsOpen}
+              appearance={appearance}
+              motion={motion}
+              setAppearance={setAppearance}
+              setMotion={setMotion}
+              selectorMotion={selectorMotion}
+            />
+          )}
           renderPanels={helpers => {
+            // Store helpers reference for deep link navigation (only once)
+            if (!helpersRef.current) {
+              helpersRef.current = helpers;
+            }
+
             const currentCorpus = resolveCurrentCorpus(helpers.stack);
             const currentItems = currentCorpus ? demoItems[currentCorpus.id] ?? [] : [];
             const currentItem = resolveCurrentItem(helpers.stack, currentCorpus);
@@ -570,7 +424,7 @@ export function SpringstackDemo() {
               <>
                 <div className="basis-full shrink-0" {...helpers.getPanelProps('root:corpora')}>
                   <div className="flex h-full flex-col gap-2 p-2">
-                    <div className="font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-7">Corpora</div>
+                    <div className="font-eyebrow text-xs text-muted-foreground pl-7">Corpora</div>
                     <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
                       {demoCorpora.map(corpus => {
                         const node = buildCorpusNode(corpus);
@@ -604,7 +458,7 @@ export function SpringstackDemo() {
 
                 <div className="basis-full shrink-0" {...helpers.getPanelProps('item:detail')}>
                   <div className="flex h-full flex-col gap-2 p-2">
-                    <div className="font-body text-xs uppercase tracking-[0.2em] text-muted-foreground pl-7">Item</div>
+                    <div className="font-eyebrow text-xs text-muted-foreground pl-7">Item</div>
                     <div className="rounded-md bg-muted p-2">
                       <div className="flex items-start gap-1">
                         <FileText className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />
@@ -641,7 +495,7 @@ export function SpringstackDemo() {
 
                 <div className="basis-full shrink-0" {...helpers.getPanelProps('detail:evidence')}>
                   <div className="flex h-full flex-col gap-2 p-2">
-                    <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground pl-7">Detail</div>
+                    <div className="font-eyebrow text-xs text-muted-foreground pl-7">Detail</div>
                     <div className="flex flex-col gap-2 rounded-md bg-muted p-2">
                       <div className="flex items-start gap-1">
                         <Layers className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />
@@ -666,7 +520,7 @@ export function SpringstackDemo() {
             return (
               <>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground pl-7">Controls</div>
+                  <div className="font-eyebrow text-xs text-muted-foreground pl-7">Controls</div>
                   <button
                     type="button"
                     onClick={() => handlePushNext(helpers)}

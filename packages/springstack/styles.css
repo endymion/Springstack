@@ -1,0 +1,45 @@
+@layer base {
+  :root {
+    --font-headline: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-headline-weight: 600;
+    --font-body: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-body-weight: 400;
+    --font-eyebrow: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-eyebrow-weight: 600;
+    --font-eyebrow-caps: all-caps;
+  }
+
+  body {
+    font-family: var(--font-body);
+    font-weight: var(--font-body-weight);
+  }
+
+  .font-headline {
+    font-family: var(--font-headline);
+    font-weight: var(--font-headline-weight);
+  }
+
+  .font-body {
+    font-family: var(--font-body);
+    font-weight: var(--font-body-weight);
+  }
+
+  .font-eyebrow {
+    font-family: var(--font-eyebrow);
+    font-weight: var(--font-eyebrow-weight);
+    letter-spacing: 0.2em;
+  }
+
+  :root[style*="--font-eyebrow-caps: all-caps"] .font-eyebrow {
+    text-transform: uppercase;
+  }
+
+  :root[style*="--font-eyebrow-caps: small-caps"] .font-eyebrow {
+    font-variant-caps: all-small-caps;
+  }
+
+  :root[style*="Jersey 15"] .font-headline {
+    font-size: 1.5em;
+    line-height: 1.2;
+  }
+}

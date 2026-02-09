@@ -10,10 +10,12 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./styles.css": "./styles.css"
   },
   "files": [
-    "dist"
+    "dist",
+    "styles.css"
   ],
   "scripts": {
     "build": "tsup",
@@ -23,7 +25,8 @@
   "peerDependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "gsap": "^3.12.5"
+    "gsap": "^3.12.5",
+    "lucide-react": "^0.563.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.66",

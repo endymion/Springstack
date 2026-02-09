@@ -4,6 +4,7 @@
 @import "@radix-ui/colors/blue-dark.css";
 @import "@radix-ui/colors/sand.css";
 @import "@radix-ui/colors/sand-dark.css";
+@import "springstack/styles.css";
 
 @tailwind base;
 @tailwind components;
@@ -11,12 +12,6 @@
 
 @layer base {
   :root {
-    /* Typography */
-    --font-headline: ui-sans-serif, system-ui, -apple-system, sans-serif;
-    --font-headline-weight: 600;
-    --font-body: ui-sans-serif, system-ui, -apple-system, sans-serif;
-    --font-body-weight: 400;
-
     /* Radix Gray scale aliases (step 1 page bg, 2 card/muted, 3–5 component states, 6–8 borders, 11–12 text) */
     --background: var(--gray-1);
     --foreground: var(--gray-12);
@@ -166,17 +161,6 @@
   }
   body {
     @apply bg-background text-foreground font-body;
-    font-weight: var(--font-body-weight);
-  }
-
-  .font-headline {
-    font-weight: var(--font-headline-weight);
-  }
-
-  /* Cathode typeface uses Jersey 10 which needs to be larger */
-  :root[style*="Jersey 10"] .font-headline {
-    font-size: 1.5em;
-    line-height: 1.2;
   }
 }
 
