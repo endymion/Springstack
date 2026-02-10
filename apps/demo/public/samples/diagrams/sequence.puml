@@ -1,0 +1,13 @@
+@startuml
+actor Analyst
+participant "Springstack" as Stack
+participant "Render Engine" as Engine
+participant "Client" as Client
+
+Analyst -> Stack: Open corpus
+Stack -> Engine: Morph breadcrumb
+Engine -> Client: Update panels
+Client -> Stack: Request details
+Stack -> Engine: Render preview
+Engine -> Client: Show detail panel
+@enduml

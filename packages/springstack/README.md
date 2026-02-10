@@ -21,3 +21,4 @@ const root: SpringstackNode = { id: 'root', kind: 'root', title: 'App' };
 
 - Tailwind classes and Radix color tokens are expected in the host app.
 - The component manages push/pop animations and breadcrumb morphing.
+- Optional file type helpers are available via `createNodeTypeRegistry` and the `fileTypes` exports (including SVG, SQLite, VideoML, Mermaid, Parquet, and diagram preview components).

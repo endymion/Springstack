@@ -1,4 +1,4 @@
-import { cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Children, Fragment, cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import gsap from 'gsap';
 import type {
@@ -1241,11 +1241,18 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     }
   });
 
-  const panelsWithTestIds = panels.map((panel, index) => {
+  const flattenedPanels = Children.toArray(panels).flatMap(panel => {
+    if (isValidElement(panel) && panel.type === Fragment) {
+      return Children.toArray(panel.props.children);
+    }
+    return [panel];
+  });
+
+  const panelsWithTestIds = flattenedPanels.map((panel, index) => {
     if (!isValidElement(panel)) return panel;
     const existing = panel.props as { ['data-testid']?: string };
     if (existing['data-testid']) return panel;
-    return cloneElement(panel, { 'data-testid': `springstack-panel-${index}` });
+    return cloneElement(panel, { 'data-testid': `springstack-panel-${index}` } as Record<string, string>);
   });
 
   const overlay = renderOverlay ? renderOverlay(helpers) : null;

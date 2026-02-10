@@ -1,0 +1,33 @@
+{
+  "unit": "Stack Ops",
+  "shift": "night",
+  "active": true,
+  "summary": {
+    "agents": 4,
+    "alerts": 2,
+    "lastScan": "02:17"
+  },
+  "agents": [
+    {
+      "id": "a-001",
+      "name": "Keller",
+      "role": "watcher",
+      "tags": ["alpha", "vault"],
+      "status": {
+        "signal": "active",
+        "strength": 0.86
+      }
+    },
+    {
+      "id": "a-002",
+      "name": "Mori",
+      "role": "analyst",
+      "tags": ["beta"],
+      "status": {
+        "signal": "idle",
+        "strength": 0.44
+      }
+    }
+  ],
+  "notes": null
+}

@@ -1,14 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { HTMLAttributes } from 'react';
 import {
-  BookOpen,
   ChevronLeft,
   ChevronRight,
   FileStack,
-  FileText,
-  Folder,
-  Layers,
-  Link2,
   Play,
   RotateCcw,
   Settings
@@ -23,8 +18,12 @@ import {
   type SpringstackTimingMode
 } from 'springstack';
 import { parsePathToStack, stackToPath } from '@/lib/routeUtils';
+import { createDemoNodeTypeRegistry } from '@/lib/nodeTypes';
 
-type NodeKind = 'root' | 'corpus' | 'item' | 'detail';
+const ROOT_KIND = 'application/x-root';
+const FOLDER_KIND = 'application/x-folder';
+const DETAIL_KIND = 'application/x-detail';
+
 
 export interface DemoNodeData {
   corpusId?: string;
@@ -32,6 +31,33 @@ export interface DemoNodeData {
   mediaType?: string;
   sizeKb?: number;
   metaLine?: string;
+  url?: string;
+  width?: number;
+  height?: number;
+  fps?: number;
+  durationSec?: number;
+  sceneCount?: number;
+  nodeCount?: number;
+  edgeCount?: number;
+  elementCount?: number;
+  diagramType?: string;
+  pageCount?: number;
+  rowCount?: number;
+  columnCount?: number;
+  language?: string;
+  lineCount?: number;
+  itemCount?: number;
+  fileSize?: number;
+  compressionCodec?: string;
+  fileSize?: number;
+  compressionCodec?: string;
+  tableCount?: number;
+  fileSize?: number;
+  tableId?: string;
+  tableCount?: number;
+  fileSize?: number;
+  tableName?: string;
+  dbUrl?: string;
 }
 
 export interface Corpus {
@@ -45,118 +71,168 @@ export interface CorpusItem {
   title: string;
   mediaType: string;
   sizeKb: number;
+  url?: string;
+  width?: number;
+  height?: number;
+  fps?: number;
+  durationSec?: number;
+  sceneCount?: number;
+  nodeCount?: number;
+  edgeCount?: number;
+  elementCount?: number;
+  diagramType?: string;
+  pageCount?: number;
+  rowCount?: number;
+  columnCount?: number;
+  language?: string;
+  lineCount?: number;
+  itemCount?: number;
 }
 
 export const demoCorpora: Corpus[] = [
-  { id: 'c-archive', name: 'X-Files Cabinet A', metaLine: '13 locked folders · 4.4 GB' },
-  { id: 'c-patristics', name: 'Vault of Unfiled Anomalies', metaLine: '9 sealed cases · 2.7 GB' },
-  { id: 'c-iconography', name: 'Do Not Open Drawer', metaLine: '7 forbidden bundles · 1.9 GB' }
+  { id: 'c-docs', name: 'Documents', metaLine: '3 files · 498 KB' },
+  { id: 'c-media', name: 'Media', metaLine: '5 files · 2.8 MB' },
+  { id: 'c-data', name: 'Data & Code', metaLine: '7 files · 177 KB' },
+  { id: 'c-diagrams', name: 'Diagrams', metaLine: '4 files · 10 KB' }
 ];
 
 export const demoItems: Record<string, CorpusItem[]> = {
-  'c-archive': [
-    { id: 'i-001', title: 'Black Tape Memo', mediaType: 'text/markdown', sizeKb: 84 },
-    { id: 'i-002', title: 'Locker Key That Opens Nothing', mediaType: 'application/pdf', sizeKb: 412 },
-    { id: 'i-003', title: 'Redacted Map of the Basement', mediaType: 'text/plain', sizeKb: 29 }
+  'c-docs': [
+    { id: 'md-report', title: 'Field Report', mediaType: 'text/markdown', sizeKb: 84, url: '/samples/report.md' },
+    { id: 'pdf-dossier', title: 'Access Dossier', mediaType: 'application/pdf', sizeKb: 412, url: '/samples/dossier.pdf', pageCount: 2 },
+    { id: 'notes', title: 'Meeting Notes', mediaType: 'text/plain', sizeKb: 2, url: '/samples/notes.txt' }
   ],
-  'c-patristics': [
-    { id: 'i-101', title: 'Glow-in-the-Dark Moss Sample', mediaType: 'application/pdf', sizeKb: 732 },
-    { id: 'i-102', title: 'Half-Finished Incident Log', mediaType: 'text/markdown', sizeKb: 56 },
-    { id: 'i-103', title: 'Audio: Footsteps with No Source', mediaType: 'text/csv', sizeKb: 18 }
+  'c-media': [
+    { id: 'blur-photo', title: 'Photograph That Refuses to Focus', mediaType: 'image/png', sizeKb: 1240, url: '/samples/blur.png', width: 1024, height: 640 },
+    { id: 'footsteps', title: 'Footsteps with No Source', mediaType: 'audio/wav', sizeKb: 520, url: '/samples/footsteps.wav', durationSec: 1.2 },
+    { id: 'hallway-loop', title: 'Looped Hallway', mediaType: 'video/mp4', sizeKb: 980, url: '/samples/hallway.mp4', durationSec: 2.0 },
+    { id: 'glyph', title: 'Vector Sigil', mediaType: 'image/svg+xml', sizeKb: 34, url: '/samples/sigil.svg', width: 640, height: 480 },
+    { id: 'composition', title: 'Intro Sequence', mediaType: 'application/x-vml+xml', sizeKb: 8, url: '/samples/demo.vml', width: 1920, height: 1080, fps: 30, sceneCount: 3, durationSec: 45 }
   ],
-  'c-iconography': [
-    { id: 'i-201', title: 'Photograph That Refuses to Focus', mediaType: 'image/png', sizeKb: 1240 },
-    { id: 'i-202', title: 'Handwritten Warning: DO NOT STACK', mediaType: 'text/markdown', sizeKb: 67 },
-    { id: 'i-203', title: 'Blueprint for a Door That Is Not There', mediaType: 'application/pdf', sizeKb: 503 }
+  'c-data': [
+    { id: 'crowd-log', title: 'Crowd Log', mediaType: 'text/csv', sizeKb: 18, url: '/samples/log.csv', rowCount: 6, columnCount: 3 },
+    { id: 'roster-matrix', title: 'Roster Matrix', mediaType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', sizeKb: 45, url: '/samples/roster.xlsx', rowCount: 5, columnCount: 4 },
+    { id: 'roster-json', title: 'Roster Snapshot', mediaType: 'application/json', sizeKb: 3, url: '/samples/roster.json', itemCount: 4 },
+    { id: 'beacon-driver', title: 'Beacon Driver', mediaType: 'text/typescript', sizeKb: 12, url: '/samples/beacon.ts', language: 'typescript', lineCount: 18 },
+    { id: 'asset-bundle', title: 'Asset Bundle', mediaType: 'application/zip', sizeKb: 76, url: '/samples/assets.zip', itemCount: 3 },
+    { id: 'stack-db', title: 'Stack Records', mediaType: 'application/x-sqlite3', sizeKb: 20, url: '/samples/stack.db', tableCount: 4, fileSize: 20480 },
+    { id: 'sensor-parquet', title: 'Sensor Readings', mediaType: 'application/x-parquet', sizeKb: 3, url: '/samples/data/sensors.parquet', rowCount: 50, columnCount: 6, fileSize: 2765, compressionCodec: 'snappy' }
+  ],
+  'c-diagrams': [
+    { id: 'service-map', title: 'Service Map', mediaType: 'text/vnd.graphviz', sizeKb: 2, url: '/samples/diagrams/network.dot', nodeCount: 5, edgeCount: 6 },
+    { id: 'handoff-flow', title: 'Handoff Flow', mediaType: 'text/x-plantuml', sizeKb: 3, url: '/samples/diagrams/sequence.puml', elementCount: 6 },
+    { id: 'scene-sketch', title: 'Scene Sketch', mediaType: 'application/x-excalidraw+json', sizeKb: 4, url: '/samples/diagrams/story.excalidraw.json', elementCount: 4 },
+    { id: 'ops-flow', title: 'Ops Flow', mediaType: 'text/x-mermaid', sizeKb: 1, url: '/samples/diagrams/flow.mmd', diagramType: 'Flowchart', lineCount: 12, language: 'mermaid' }
   ]
 };
 
 const mergeClass = (...classes: Array<string | undefined>) => classes.filter(Boolean).join(' ');
-
+const formatDuration = (durationSec?: number) => {
+  if (!durationSec || durationSec <= 0) return undefined;
+  const totalSeconds = Math.round(durationSec);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
+const formatVmlLine = (item: CorpusItem) => {
+  const parts = [
+    item.width && item.height ? `${item.width}×${item.height}` : null,
+    item.fps ? `${item.fps}fps` : null,
+    item.sceneCount ? `${item.sceneCount} scenes` : null,
+    formatDuration(item.durationSec)
+  ].filter((part): part is string => Boolean(part));
+  return parts.length ? parts.join(' · ') : undefined;
+};
 
 export const buildRootNode = (): SpringstackNode<DemoNodeData> => ({
   id: 'root',
-  kind: 'root',
+  kind: ROOT_KIND,
   title: 'Library',
   data: { metaLine: `${demoCorpora.length} corpora` }
 });
 
 export const buildCorpusNode = (corpus: Corpus): SpringstackNode<DemoNodeData> => ({
   id: corpus.id,
-  kind: 'corpus',
+  kind: FOLDER_KIND,
   title: corpus.name,
   data: { corpusId: corpus.id, metaLine: corpus.metaLine }
 });
 
 export const buildItemNode = (item: CorpusItem, corpus: Corpus): SpringstackNode<DemoNodeData> => ({
   id: item.id,
-  kind: 'item',
+  kind: item.mediaType,
   title: item.title,
   data: {
     corpusId: corpus.id,
     itemId: item.id,
     mediaType: item.mediaType,
     sizeKb: item.sizeKb,
-    metaLine: `${item.mediaType} · ${item.sizeKb} KB`
+    url: item.url,
+    width: item.width,
+    height: item.height,
+    fps: item.fps,
+    durationSec: item.durationSec,
+    sceneCount: item.sceneCount,
+    nodeCount: item.nodeCount,
+    edgeCount: item.edgeCount,
+    elementCount: item.elementCount,
+    diagramType: item.diagramType,
+    pageCount: item.pageCount,
+    rowCount: item.rowCount,
+    columnCount: item.columnCount,
+    language: item.language,
+    lineCount: item.lineCount,
+    itemCount: item.itemCount,
+    fileSize: item.fileSize,
+    compressionCodec: item.compressionCodec,
+    metaLine: item.tableCount
+      ? `${item.tableCount} tables · ${item.sizeKb} KB`
+      : item.mediaType === 'application/x-parquet'
+        ? `${item.rowCount ?? 0} rows · ${item.columnCount ?? 0} cols`
+      : item.mediaType === 'application/x-vml+xml'
+        ? formatVmlLine(item)
+        : `${item.mediaType} · ${item.sizeKb} KB`
   }
 });
 
 export const buildDetailNode = (item: CorpusItem): SpringstackNode<DemoNodeData> => ({
   id: `detail-${item.id}`,
-  kind: 'detail',
+  kind: DETAIL_KIND,
   title: 'Detail View',
   data: { itemId: item.id, metaLine: 'Evidence pack' }
 });
 
+export const buildTableNode = (item: CorpusItem, tableId: string): SpringstackNode<DemoNodeData> => ({
+  id: `table-${item.id}-${tableId}`,
+  kind: 'application/x-sqlite3-table',
+  title: tableId,
+  data: {
+    itemId: item.id,
+    tableName: tableId,
+    dbUrl: item.url,
+    metaLine: 'SQLite table'
+  }
+});
+
 const resolveCurrentCorpus = (stack: SpringstackNode<DemoNodeData>[]) => {
-  const corpusNode = stack.find(node => node.kind === 'corpus');
+  const corpusNode = stack.find(node => node.data?.corpusId && node.kind === FOLDER_KIND);
   if (!corpusNode?.data?.corpusId) return null;
   return demoCorpora.find(corpus => corpus.id === corpusNode.data?.corpusId) ?? null;
 };
 
 const resolveCurrentItem = (stack: SpringstackNode<DemoNodeData>[], corpus: Corpus | null) => {
-  const itemNode = stack.find(node => node.kind === 'item');
+  const itemNode = stack.find(node => node.data?.itemId && node.kind !== DETAIL_KIND && node.kind !== FOLDER_KIND && node.kind !== ROOT_KIND);
   if (!itemNode?.data?.itemId || !corpus) return null;
   return (demoItems[corpus.id] ?? []).find(item => item.id === itemNode.data?.itemId) ?? null;
 };
 
-const buildRenderers = (): SpringstackRenderers<DemoNodeData> => {
-  const renderCard = (icon: ReactNode, node: SpringstackNode<DemoNodeData>) => (
-    <>
-      {icon}
-      <div className="flex flex-col">
-        <span className="font-headline font-semibold text-foreground">{node.title}</span>
-        {node.data?.metaLine && <span className="font-body text-xs text-muted-foreground">{node.data.metaLine}</span>}
-      </div>
-    </>
-  );
-
-  return {
-    list: {
-      root: node => renderCard(<BookOpen className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
-      corpus: node => renderCard(<Folder className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
-      item: node => renderCard(<FileText className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
-      detail: node => renderCard(<Link2 className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
-      default: node => renderCard(<Layers className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node)
-    },
-    crumb: {
-      root: node => renderCard(<BookOpen className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
-      corpus: node => renderCard(<Folder className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
-      item: node => renderCard(<FileText className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
-      detail: node => renderCard(<Link2 className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node),
-      default: node => renderCard(<Layers className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />, node)
-    }
-  };
-};
-
 export function SpringstackDemo() {
   const { appearance, motion, setAppearance, setMotion } = useSpringstackAppearance();
-  const { reduceMotion } = appearance;
   const { timingMode } = motion;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const isInitialMount = useRef(true);
-  const renderers = useMemo(buildRenderers, []);
+  const registry = useMemo(createDemoNodeTypeRegistry, []);
+  const renderers = useMemo<SpringstackRenderers<DemoNodeData>>(() => registry.toRenderers(), [registry]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -186,33 +262,32 @@ export function SpringstackDemo() {
     return presets[timingMode];
   }, [timingMode]);
 
-
   const handlePushNext = async (helpers: SpringstackHelpers<DemoNodeData>) => {
     const activeNode = helpers.stack[helpers.stack.length - 1];
-    if (activeNode.kind === 'root') {
+    if (activeNode.kind === ROOT_KIND) {
       const corpus = demoCorpora[0];
       const sourceEl = rootRef.current?.querySelector(
-        `[data-item-card][data-item-type=\"corpus\"][data-item-id=\"${corpus.id}\"]`
+        `[data-item-card][data-item-type="${FOLDER_KIND}"][data-item-id="${corpus.id}"]`
       ) as HTMLElement | null;
       await helpers.push(buildCorpusNode(corpus), sourceEl);
       return;
     }
-    if (activeNode.kind === 'corpus') {
+    if (activeNode.kind === FOLDER_KIND) {
       const corpus = resolveCurrentCorpus(helpers.stack);
       const item = corpus ? (demoItems[corpus.id] ?? [])[0] : null;
       if (!item || !corpus) return;
       const sourceEl = rootRef.current?.querySelector(
-        `[data-item-card][data-item-type=\"item\"][data-item-id=\"${item.id}\"]`
+        `[data-item-card][data-item-type="${item.mediaType}"][data-item-id="${item.id}"]`
       ) as HTMLElement | null;
       await helpers.push(buildItemNode(item, corpus), sourceEl);
       return;
     }
-    if (activeNode.kind === 'item') {
+    if (activeNode.kind !== DETAIL_KIND) {
       const corpus = resolveCurrentCorpus(helpers.stack);
       const item = corpus ? resolveCurrentItem(helpers.stack, corpus) : null;
       if (!item) return;
       const sourceEl = rootRef.current?.querySelector(
-        `[data-item-card][data-item-type=\"detail\"][data-item-id=\"detail-${item.id}\"]`
+        `[data-item-card][data-item-type="${DETAIL_KIND}"][data-item-id="detail-${item.id}"]`
       ) as HTMLElement | null;
       await helpers.push(buildDetailNode(item), sourceEl);
     }
@@ -226,84 +301,22 @@ export function SpringstackDemo() {
     await helpers.drillTo(path);
   };
 
-  // Always start at root - we'll animate to deep link after mount
   const initialStack = useMemo(() => [buildRootNode()], []);
-
-  // Parse URL and drill to target after mount
-  const targetStackRef = useRef<SpringstackNode<DemoNodeData>[] | null>(null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const builders = { buildRootNode, buildCorpusNode, buildItemNode, buildDetailNode };
-    const stack = parsePathToStack(window.location.pathname, demoCorpora, demoItems, builders);
-
-    // Invalid URL - redirect to root
-    if (!stack) {
-      if (window.location.pathname !== '/') {
-        window.history.replaceState(null, '', '/');
-      }
-      return;
-    }
-
-    // If it's not just root, store it for drillTo
-    if (stack.length > 1) {
-      targetStackRef.current = stack;
-    }
+  const routing = useMemo(() => {
+    const builders = { buildRootNode, buildCorpusNode, buildItemNode, buildDetailNode, buildTableNode };
+    return {
+      parse: (path: string) => parsePathToStack(path, demoCorpora, demoItems, builders) ?? [],
+      serialize: (stack: SpringstackNode<DemoNodeData>[]) => stackToPath(stack, demoCorpora)
+    };
   }, []);
-
-  // Handle browser back/forward
-  useEffect(() => {
-    const handlePopState = () => {
-      // Simple fallback: reload page when user uses back/forward
-      window.location.reload();
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  // Store helpers ref for deep link navigation
-  const helpersRef = useRef<SpringstackHelpers<DemoNodeData> | null>(null);
-  const hasCalledDrillToRef = useRef(false);
-
-  // Trigger deep link navigation exactly once on mount if needed
-  useEffect(() => {
-    // Only run if we have a deep link target AND haven't called drillTo yet
-    if (!targetStackRef.current || hasCalledDrillToRef.current) {
-      return;
-    }
-
-    // Mark as called IMMEDIATELY to prevent StrictMode double-invoke
-    hasCalledDrillToRef.current = true;
-
-    const targetStack = targetStackRef.current;
-    let cancelled = false;
-
-    // Wait for helpers to be available, then trigger drillTo
-    const checkHelpers = () => {
-      if (cancelled) return;
-
-      if (helpersRef.current) {
-        helpersRef.current.drillTo(targetStack);
-        return; // STOP - we're done
-      }
-
-      requestAnimationFrame(checkHelpers);
-    };
-
-    requestAnimationFrame(checkHelpers);
-
-    return () => {
-      cancelled = true;
-    };
-  }, []); // Empty deps = run ONCE on mount (but StrictMode will run it twice)
 
   const ItemsPanel = ({
     helpers,
     currentCorpus,
-    currentItems
-  }: {
+    currentItems,
+    className,
+    ...rest
+  }: HTMLAttributes<HTMLDivElement> & {
     helpers: SpringstackHelpers<DemoNodeData>;
     currentCorpus: Corpus | null;
     currentItems: CorpusItem[];
@@ -316,10 +329,11 @@ export function SpringstackDemo() {
 
     return (
       <div
-        className="basis-full shrink-0"
         {...helpers.getPanelProps(
           currentCorpus ? `corpus:${currentCorpus.id}:items` : 'corpus:unknown:items'
         )}
+        {...rest}
+        className={mergeClass('basis-full shrink-0', className)}
       >
         <div className="flex h-full flex-col gap-2 p-2">
           <div className="flex items-center justify-between font-eyebrow text-xs text-muted-foreground pl-7">
@@ -332,6 +346,7 @@ export function SpringstackDemo() {
               const cardProps = helpers.getCardProps(node, {
                 onSelect: (_node, sourceEl) => helpers.push(node, sourceEl)
               });
+              const renderer = renderers.list?.[node.kind] ?? renderers.list?.default;
               return (
                 <button
                   key={item.id}
@@ -345,7 +360,7 @@ export function SpringstackDemo() {
                 >
                   <div data-card-shell="true" className=" flex w-full items-start gap-1">
                     <div data-card-content="true" className=" flex w-full items-start gap-1">
-                      {(renderers.list?.item ?? renderers.list?.default)?.(node)}
+                      {renderer?.(node)}
                     </div>
                   </div>
                 </button>
@@ -367,18 +382,7 @@ export function SpringstackDemo() {
         <Springstack<DemoNodeData>
           initialStack={initialStack}
           renderers={renderers}
-          onStackChange={(stack) => {
-            // Skip URL update on initial mount
-            if (isInitialMount.current) {
-              isInitialMount.current = false;
-              return;
-            }
-
-            const newPath = stackToPath(stack, demoCorpora);
-            if (typeof window !== 'undefined' && window.location.pathname !== newPath) {
-              window.history.pushState(null, '', newPath);
-            }
-          }}
+          routing={routing}
           enterAnimation={{
             durationMs: selectorMotion.durationMs * 0.25,
             staggerMs:
@@ -422,26 +426,36 @@ export function SpringstackDemo() {
             />
           )}
           renderPanels={helpers => {
-            // Store helpers reference for deep link navigation (only once)
-            if (!helpersRef.current) {
-              helpersRef.current = helpers;
-            }
-
             const currentCorpus = resolveCurrentCorpus(helpers.stack);
             const currentItems = currentCorpus ? demoItems[currentCorpus.id] ?? [] : [];
             const currentItem = resolveCurrentItem(helpers.stack, currentCorpus);
+            const currentItemNode = currentItem && currentCorpus ? buildItemNode(currentItem, currentCorpus) : null;
+            const activeNode = helpers.stack[helpers.stack.length - 1];
+            const detailTargetNode =
+              activeNode?.kind === 'application/x-sqlite3-table'
+                ? activeNode
+                : currentItemNode;
+            const detailRenderer = detailTargetNode
+              ? registry.resolve(detailTargetNode.kind)
+              : null;
+            const detailLine = detailTargetNode ? registry.detailLineFor(detailTargetNode) : undefined;
+            const detailContent =
+              detailTargetNode && detailRenderer?.content
+                ? detailRenderer.content(detailTargetNode, { ...detailRenderer, detailLine }, helpers)
+                : null;
 
             return (
               <>
                 <div className="basis-full shrink-0" {...helpers.getPanelProps('root:corpora')}>
                   <div className="flex h-full flex-col gap-2 p-2">
                     <div className="font-eyebrow text-xs text-muted-foreground pl-7">Corpora</div>
-                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                      {demoCorpora.map(corpus => {
-                        const node = buildCorpusNode(corpus);
-                        const cardProps = helpers.getCardProps(node, {
-                          onSelect: (_node, sourceEl) => helpers.push(node, sourceEl)
-                        });
+                  <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                    {demoCorpora.map(corpus => {
+                      const node = buildCorpusNode(corpus);
+                      const cardProps = helpers.getCardProps(node, {
+                        onSelect: (_node, sourceEl) => helpers.push(node, sourceEl)
+                      });
+                      const renderer = renderers.list?.[node.kind] ?? renderers.list?.default;
                         return (
                           <button
                             key={corpus.id}
@@ -455,7 +469,7 @@ export function SpringstackDemo() {
                           >
                             <div data-card-shell="true" className=" flex w-full items-start gap-1">
                               <div data-card-content="true" className=" flex w-full items-start gap-1">
-                                {(renderers.list?.corpus ?? renderers.list?.default)?.(node)}
+                                {renderer?.(node)}
                               </div>
                             </div>
                           </button>
@@ -471,19 +485,20 @@ export function SpringstackDemo() {
                   <div className="flex h-full flex-col gap-2 p-2">
                     <div className="font-eyebrow text-xs text-muted-foreground pl-7">Item</div>
                     <div className="rounded-md bg-muted p-2">
-                      <div className="flex items-start gap-1">
-                        <FileText className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />
-                        <div className="font-headline text-sm font-semibold text-foreground">{currentItem?.title ?? '—'}</div>
-                      </div>
-                      <div className="font-body mt-2 text-xs text-muted-foreground">
-                        {currentItem?.mediaType ?? '—'} · {currentItem?.sizeKb ?? 0} KB
-                      </div>
+                      {currentItemNode ? (
+                        <div className="flex items-start gap-1">
+                          {renderers.list?.[currentItemNode.kind]?.(currentItemNode) ?? renderers.list?.default?.(currentItemNode)}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">No item selected.</div>
+                      )}
                     </div>
                     {currentItem && (() => {
                       const node = buildDetailNode(currentItem);
                       const cardProps = helpers.getCardProps(node, {
                         onSelect: (_node, sourceEl) => helpers.push(node, sourceEl)
                       });
+                      const renderer = renderers.list?.[node.kind] ?? renderers.list?.default;
                       return (
                         <button
                           type="button"
@@ -495,7 +510,7 @@ export function SpringstackDemo() {
                         >
                           <div data-card-shell="true" className=" flex w-full items-start gap-1">
                             <div data-card-content="true" className=" flex w-full items-start gap-1">
-                              {(renderers.list?.detail ?? renderers.list?.default)?.(node)}
+                              {renderer?.(node)}
                             </div>
                           </div>
                         </button>
@@ -507,19 +522,15 @@ export function SpringstackDemo() {
                 <div className="basis-full shrink-0" {...helpers.getPanelProps('detail:evidence')}>
                   <div className="flex h-full flex-col gap-2 p-2">
                     <div className="font-eyebrow text-xs text-muted-foreground pl-7">Detail</div>
-                    <div className="flex flex-col gap-2 rounded-md bg-muted p-2">
-                      <div className="flex items-start gap-1">
-                        <Layers className="mt-0.5 h-4 w-4 text-muted-foreground" strokeWidth={2.25} />
-                        <span className="text-sm font-semibold text-foreground">Evidence pack</span>
+                    {currentItemNode ? (
+                      <div className="flex flex-col gap-2">{detailContent}</div>
+                    ) : (
+                      <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
+                        Select an item to preview its file detail.
                       </div>
-                      <div className="grid gap-2 md:grid-cols-2">
-                        {['Primary excerpt', 'Provenance', 'Context budget', 'Rerank trace'].map(label => (
-                          <div key={label} className="rounded-md bg-card p-2 text-xs text-muted-foreground">
-                            {label}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="text-xs text-muted-foreground">This panel is the terminal node. Pop to return.</div>
+                    )}
+                    <div className="text-xs text-muted-foreground">
+                      This panel is the terminal node. Pop to return.
                     </div>
                   </div>
                 </div>
@@ -535,7 +546,7 @@ export function SpringstackDemo() {
                   <button
                     type="button"
                     onClick={() => handlePushNext(helpers)}
-                    disabled={helpers.isTransitioning || activeNode.kind === 'detail'}
+                    disabled={helpers.isTransitioning || activeNode.kind === DETAIL_KIND}
                     className="flex items-center gap-2 rounded-md bg-card px-3 py-2 text-sm text-foreground transition-colors hover:bg-hover disabled:opacity-40"
                   >
                     <ChevronRight className="h-4 w-4" strokeWidth={2.25} />

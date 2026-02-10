@@ -118,7 +118,7 @@ export function SpringstackSettings({
         onClick={event => event.stopPropagation()}
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-none items-center justify-between">
             <div className="flex items-center gap-2 font-headline text-sm font-semibold text-foreground">Settings</div>
             <button
               type="button"
@@ -130,9 +130,9 @@ export function SpringstackSettings({
             </button>
           </div>
 
-          <div className="mt-6 flex-1 overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
+          <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
             <div className="grid gap-6 md:grid-cols-2">
-            <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-6">
               <div>
                 <h3 className="mb-2 font-eyebrow text-xs font-bold text-muted-foreground">Mode</h3>
                 <AnimatedSelector
@@ -173,11 +173,11 @@ export function SpringstackSettings({
                   ]}
                 />
               </div>
-            </div>
-            <div>
-              <h3 className="mb-2 font-eyebrow text-xs font-bold text-muted-foreground">Theme</h3>
-              <AnimatedSelector
-                name="theme"
+              </div>
+              <div>
+                <h3 className="mb-2 font-eyebrow text-xs font-bold text-muted-foreground">Theme</h3>
+                <AnimatedSelector
+                  name="theme"
                 value={appearance.theme}
                 onChange={value => setAppearance({ theme: value as SpringstackAppearanceState['theme'] })}
                 layout="grid"
@@ -204,8 +204,8 @@ export function SpringstackSettings({
                   }
                 ]}
               />
+              </div>
             </div>
-          </div>
 
           <div className="mt-6">
             <h3 className="mb-2 font-eyebrow text-xs font-bold text-muted-foreground">Typeface</h3>

@@ -1,0 +1,43 @@
+<vml id="intro-sequence" title="Intro Sequence" fps="30" width="1920" height="1080">
+  <voiceover provider="dry-run" />
+
+  <scene id="opening" title="Opening" styles='{"background":"#0f1117"}'>
+    <layer id="bg" z="0">
+      <video-background props='{"color":"#0f1117"}' />
+    </layer>
+    <layer id="title" z="10">
+      <video-title props='{"text":"Springstack Demo","color":"#5f7bff","textColor":"#e8eaf0","position":{"y":520},"textAlign":"center"}' />
+    </layer>
+    <cue id="hold-opening" label="hold-opening">
+      <pause seconds="15s" />
+    </cue>
+  </scene>
+
+  <transition id="fade-to-middle" effect="crossfade" duration="18f" ease="power2.inOut" />
+
+  <scene id="middle" title="Middle" styles='{"background":"#151a27"}'>
+    <layer id="bg" z="0">
+      <video-background props='{"color":"#151a27"}' />
+    </layer>
+    <layer id="title" z="10">
+      <video-title props='{"text":"Breadcrumb Morphing","color":"#ff6ac1","textColor":"#e8eaf0","position":{"y":520},"textAlign":"center"}' />
+    </layer>
+    <cue id="hold-middle" label="hold-middle">
+      <pause seconds="15s" />
+    </cue>
+  </scene>
+
+  <transition id="fade-to-end" effect="crossfade" duration="18f" ease="power2.inOut" />
+
+  <scene id="closing" title="Closing" styles='{"background":"#1c2333"}'>
+    <layer id="bg" z="0">
+      <video-background props='{"color":"#1c2333"}' />
+    </layer>
+    <layer id="title" z="10">
+      <video-title props='{"text":"VideoML Playback","color":"#5f7bff","textColor":"#e8eaf0","position":{"y":520},"textAlign":"center"}' />
+    </layer>
+    <cue id="hold-closing" label="hold-closing">
+      <pause seconds="15s" />
+    </cue>
+  </scene>
+</vml>

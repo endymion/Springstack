@@ -6,6 +6,7 @@
 @import "@radix-ui/colors/sand-dark.css";
 @import "springstack/styles.css";
 
+@import '@excalidraw/excalidraw/index.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -1,0 +1,13 @@
+flowchart TD
+  Intake[Ingest] --> Parse[Parse signals]
+  Parse --> Classify[Classify events]
+  Classify --> Enrich[Enrich metadata]
+  Enrich --> Store[Store records]
+  Store --> Notify[Notify clients]
+  Notify --> Observe[Monitor delivery]
+  Observe --> Tune[Adjust thresholds]
+  Tune --> Classify
+  Parse --> Cache[Cache raw payloads]
+  Cache --> Store
+  Enrich --> Audit[Audit trail]
+  Audit --> Store

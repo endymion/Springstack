@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "test": "cucumber-js",
-    "test:e2e": "concurrently -k \"npm run dev --workspace apps/demo\" \"wait-on http://localhost:5173 && cucumber-js\"",
+    "test:e2e": "concurrently -k --success first \"wait-on http://localhost:5173 && BASE_URL=http://localhost:5173 cucumber-js\" \"npm run dev --workspace apps/demo -- --strictPort\"",
     "release": "semantic-release"
   },
   "devDependencies": {
@@ -18,7 +18,6 @@
     "@semantic-release/exec": "^6.0.3",
     "@semantic-release/github": "^10.3.5",
     "@semantic-release/npm": "^11.0.3",
-    "@semantic-release/release-notes-generator": "^12.1.0",
     "concurrently": "^9.2.1",
     "conventional-changelog-conventionalcommits": "^9.1.0",
     "semantic-release": "^23.0.8",

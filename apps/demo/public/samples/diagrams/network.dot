@@ -1,0 +1,18 @@
+digraph Springstack {
+  rankdir=LR;
+  node [shape=box, style=rounded, color="#5f7bff", fontname="Inter"];
+  edge [color="#ff6ac1"];
+
+  Ingest [label="Ingest"];
+  Parse [label="Parse"];
+  Classify [label="Classify"];
+  Store [label="Store"];
+  Notify [label="Notify"];
+
+  Ingest -> Parse;
+  Parse -> Classify;
+  Classify -> Store;
+  Store -> Notify;
+  Parse -> Notify;
+  Ingest -> Store;
+}

@@ -59,6 +59,32 @@ features/             - BDD test specifications
 
 ## API Reference
 
+### Node Type Registry
+
+Springstack ships a lightweight registry that maps MIME-like node kinds to icons, summary renderers, and content previews.
+
+```tsx
+import {
+  createNodeTypeRegistry,
+  GenericContent,
+  type SpringstackNode
+} from 'springstack';
+import { File } from 'lucide-react';
+
+const registry = createNodeTypeRegistry({
+  fallback: {
+    icon: File,
+    content: (node, resolved) => (
+      <GenericContent node={node} icon={resolved.icon} detailLine={resolved.detailLine} />
+    )
+  }
+});
+
+const renderers = registry.toRenderers();
+```
+
+Use the registry to build `renderers` for list + breadcrumb slots, and to resolve a content renderer for the detail panel.
+
 ### `SpringstackProps<TData>`
 
 | Prop | Type | Required | Purpose | Default / Behavior |
@@ -110,6 +136,30 @@ features/             - BDD test specifications
 | `list` | `Record<kind, SpringstackSlotRenderer>` | Render list cards by kind. |
 | `crumb` | `Record<kind, SpringstackSlotRenderer>` | Render breadcrumb items by kind. |
 | `panel` | `Record<kind, SpringstackSlotRenderer>` | Optional panel rendering by kind. |
+
+### File Type Content Components
+
+Springstack exports optional file-type content renderers you can register:
+
+- `GenericContent` (fallback for unknown types)
+- `ImageContent` (image/*)
+- `AudioContent` (audio/*)
+- `VideoContent` (video/*)
+- `MarkdownContent` (text/markdown)
+- `CodeContent` (text/typescript or custom)
+- `PdfContent` (application/pdf)
+- `SvgContent` (image/svg+xml)
+- `SpreadsheetContent` (text/csv, xlsx)
+- `ArchiveContent` (application/zip)
+- `SqliteContent` (application/x-sqlite3)
+- `SqliteTableContent` (application/x-sqlite3-table)
+- `JsonContent` (application/json)
+- `VmlContent` (application/x-vml+xml)
+- `GraphvizContent` (text/vnd.graphviz)
+- `ExcalidrawContent` (application/x-excalidraw+json)
+- `PlantumlContent` (text/x-plantuml)
+- `MermaidContent` (text/x-mermaid)
+- `ParquetContent` (application/x-parquet)
 
 ### `SpringstackTimingMode`
 

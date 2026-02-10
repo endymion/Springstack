@@ -23,15 +23,39 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
+    "@excalidraw/excalidraw": "^0.18.0",
+    "@hpcc-js/wasm-graphviz": "^1.21.0",
+    "@videoml/player": "^1.0.0",
+    "@videoml/stdlib": "^1.0.0",
+    "apache-arrow": "^14.0.2",
+    "dompurify": "^3.1.7",
+    "gsap": "^3.12.5",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.563.0",
+    "mermaid": "^10.9.3",
+    "papaparse": "^5.5.3",
+    "parquet-wasm": "^0.4.0",
+    "pdfjs-dist": "^4.8.69",
+    "plantuml-encoder": "^1.4.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "gsap": "^3.12.5",
-    "lucide-react": "^0.563.0"
+    "react-markdown": "^9.0.1",
+    "react-pdf": "^9.2.1",
+    "remark-gfm": "^4.0.0",
+    "shiki": "^1.24.4",
+    "sql.js": "^1.10.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/papaparse": "^5.3.14",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
+    "@types/sql.js": "^1.4.5",
     "tsup": "^8.0.2",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "apache-arrow": "^14.0.2",
+    "parquet-wasm": "^0.4.0"
   }
 }

@@ -1,11 +1,17 @@
 const { setWorldConstructor } = require('@cucumber/cucumber');
 const { chromium } = require('@playwright/test');
 
+const parseBaseUrl = () => {
+  if (process.env.BASE_URL) return process.env.BASE_URL;
+  if (process.env.CUCUMBER_BASE_URL) return process.env.CUCUMBER_BASE_URL;
+  return 'http://localhost:5173';
+};
+
 class SpringstackWorld {
   constructor() {
     this.browser = null;
     this.page = null;
-    this.baseUrl = process.env.BASE_URL || 'http://localhost:5173';
+    this.baseUrl = parseBaseUrl();
   }
 
   async init() {
@@ -14,16 +20,30 @@ class SpringstackWorld {
   }
 
   async dispose() {
+    const closeWithTimeout = async (promise, timeoutMs) => {
+      let timeoutId;
+      const timeout = new Promise(resolve => {
+        timeoutId = setTimeout(resolve, timeoutMs);
+      });
+      await Promise.race([promise.catch(() => {}), timeout]);
+      clearTimeout(timeoutId);
+    };
+
     if (this.page) {
-      await this.page.close();
+      await closeWithTimeout(this.page.close(), 5000);
     }
     if (this.browser) {
-      await this.browser.close();
+      await closeWithTimeout(this.browser.close(), 5000);
     }
   }
 
   async goto(path) {
-    await this.page.goto(`${this.baseUrl}${path}`, { waitUntil: 'domcontentloaded' });
+    const targetUrl = `${this.baseUrl}${path}`;
+    const response = await this.page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+    if (!response) return;
+    if (response.status() >= 500) {
+      throw new Error(`Failed to load ${targetUrl} (status ${response.status()})`);
+    }
   }
 }
 

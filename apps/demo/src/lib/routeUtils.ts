@@ -1,23 +1,17 @@
 import type { SpringstackNode } from 'springstack';
 import type { Corpus, CorpusItem, DemoNodeData } from '../components/demos/SpringstackDemo';
 
-/**
- * Convert corpus name to URL slug
- */
+const DETAIL_KIND = 'application/x-detail';
+const SQLITE_TABLE_KIND = 'application/x-sqlite3-table';
+
 function corpusToSlug(corpus: Corpus): string {
   return corpus.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '--' + corpus.id;
 }
 
-/**
- * Parse corpus slug to find matching corpus
- * Supports both formats: "x-files-cabinet-a--c-archive" or just "c-archive"
- */
 function findCorpusBySlug(slug: string, demoCorpora: Corpus[]): Corpus | null {
-  // Try exact ID match first
   let corpus = demoCorpora.find(c => c.id === slug);
   if (corpus) return corpus;
 
-  // Try slug format: extract ID after "--"
   const dashDashIndex = slug.lastIndexOf('--');
   if (dashDashIndex !== -1) {
     const id = slug.substring(dashDashIndex + 2);
@@ -28,10 +22,6 @@ function findCorpusBySlug(slug: string, demoCorpora: Corpus[]): Corpus | null {
   return null;
 }
 
-/**
- * Parse URL pathname to Springstack node array
- * Returns null if path is invalid
- */
 export function parsePathToStack(
   pathname: string,
   demoCorpora: Corpus[],
@@ -41,16 +31,15 @@ export function parsePathToStack(
     buildCorpusNode: (corpus: Corpus) => SpringstackNode<DemoNodeData>;
     buildItemNode: (item: CorpusItem, corpus: Corpus) => SpringstackNode<DemoNodeData>;
     buildDetailNode: (item: CorpusItem) => SpringstackNode<DemoNodeData>;
+    buildTableNode?: (item: CorpusItem, tableId: string) => SpringstackNode<DemoNodeData>;
   }
 ): SpringstackNode<DemoNodeData>[] | null {
   const segments = pathname.split('/').filter(Boolean);
 
-  // Root: /
   if (segments.length === 0) {
     return [builders.buildRootNode()];
   }
 
-  // Corpus: /corpus/:slug
   if (segments[0] === 'corpus' && segments[1]) {
     const corpus = findCorpusBySlug(segments[1], demoCorpora);
     if (!corpus) return null;
@@ -60,17 +49,26 @@ export function parsePathToStack(
       builders.buildCorpusNode(corpus)
     ];
 
-    // Item: /corpus/:corpusId/item/:itemId
     if (segments[2] === 'item' && segments[3]) {
+      const hasKind = segments[4] && segments[4] !== 'detail' && segments[4] !== 'table';
+      const kindSegment = hasKind ? decodeURIComponent(segments[3]) : null;
+      const itemId = hasKind ? segments[4] : segments[3];
       const items = demoItems[corpus.id] ?? [];
-      const item = items.find(i => i.id === segments[3]);
+      const item = items.find(i => i.id === itemId);
       if (!item) return null;
 
       stack.push(builders.buildItemNode(item, corpus));
 
-      // Detail: /corpus/:corpusId/item/:itemId/detail
-      if (segments[4] === 'detail') {
+      const detailIndex = hasKind ? 5 : 4;
+      if (segments[detailIndex] === 'detail') {
         stack.push(builders.buildDetailNode(item));
+      }
+      if (segments[detailIndex] === 'table' && segments[detailIndex + 1] && builders.buildTableNode) {
+        stack.push(builders.buildTableNode(item, decodeURIComponent(segments[detailIndex + 1])));
+      }
+      if (kindSegment && item.mediaType !== kindSegment) {
+        // Keep parsing consistent for non-demo callers that use kind in the URL.
+        stack[2] = { ...stack[2], kind: kindSegment };
       }
     }
 
@@ -80,34 +78,35 @@ export function parsePathToStack(
   return null;
 }
 
-/**
- * Convert Springstack node array to URL pathname
- */
 export function stackToPath(
   stack: SpringstackNode<DemoNodeData>[],
   demoCorpora: Corpus[]
 ): string {
-  if (stack.length === 1 && stack[0].kind === 'root') {
+  if (stack.length === 1) {
     return '/';
   }
 
-  const corpusNode = stack.find(n => n.kind === 'corpus');
+  const corpusNode = stack.find(n => n.data?.corpusId);
   if (!corpusNode?.data?.corpusId) return '/';
 
   const corpus = demoCorpora.find(c => c.id === corpusNode.data.corpusId);
   if (!corpus) return '/';
 
-  // Use slug format for corpus URLs
   const slug = corpusToSlug(corpus);
   let path = `/corpus/${slug}`;
 
-  const itemNode = stack.find(n => n.kind === 'item');
+  const itemNode = stack.find(n => n.data?.itemId && n.kind !== DETAIL_KIND && n.kind !== SQLITE_TABLE_KIND);
   if (itemNode?.data?.itemId) {
-    path += `/item/${itemNode.data.itemId}`;
+    const kindSegment = encodeURIComponent(itemNode.kind);
+    path += `/item/${kindSegment}/${itemNode.data.itemId}`;
 
-    const detailNode = stack.find(n => n.kind === 'detail');
+    const detailNode = stack.find(n => n.kind === DETAIL_KIND || n.kind === SQLITE_TABLE_KIND);
     if (detailNode) {
-      path += '/detail';
+      if (detailNode.kind === SQLITE_TABLE_KIND && detailNode.data?.tableId) {
+        path += `/table/${encodeURIComponent(detailNode.data.tableId)}`;
+      } else {
+        path += '/detail';
+      }
     }
   }
 
