@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import gsap from 'gsap';
 import type {
@@ -1210,6 +1210,7 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     ...helpers,
     getCardProps: (node, options) => ({
       ...helpers.getCardProps(node, options),
+      'data-testid': `springstack-card-${node.kind}-${node.id}`,
       className: shouldHideCard(node) ? 'invisible pointer-events-none' : undefined
     }),
     getPanelProps: panelKey => {
@@ -1224,6 +1225,13 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       }
       return base;
     }
+  });
+
+  const panelsWithTestIds = panels.map((panel, index) => {
+    if (!isValidElement(panel)) return panel;
+    const existing = panel.props as { ['data-testid']?: string };
+    if (existing['data-testid']) return panel;
+    return cloneElement(panel, { 'data-testid': `springstack-panel-${index}` });
   });
 
   const overlay = renderOverlay ? renderOverlay(helpers) : null;
@@ -1253,6 +1261,7 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
             <div
               key={`${node.kind}-${node.id}`}
               data-card-shell="true"
+              data-testid={`springstack-crumb-${node.kind}-${node.id}`}
               data-crumb-target={`${node.kind}:${node.id}`}
               onClick={() => helpers.popTo(index)}
               className={`flex cursor-pointer flex-col gap-1 rounded-md p-2 text-sm transition-colors ${
@@ -1270,8 +1279,8 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       </div>
 
       <div ref={contentAreaRef} className="relative mt-2 flex flex-1 overflow-hidden rounded-md bg-card p-0">
-        <div ref={trackRef} className="flex h-full w-full will-change-transform">
-          {panels}
+        <div ref={trackRef} data-testid="springstack-track" className="flex h-full w-full will-change-transform">
+          {panelsWithTestIds}
         </div>
       </div>
       {renderFooter?.(helpers)}

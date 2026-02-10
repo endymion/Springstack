@@ -269,11 +269,6 @@ export function SpringstackDemo() {
 
   // Trigger deep link navigation exactly once on mount if needed
   useEffect(() => {
-    console.log('[Demo] Deep link effect running', {
-      hasTarget: !!targetStackRef.current,
-      hasCalled: hasCalledDrillToRef.current
-    });
-
     // Only run if we have a deep link target AND haven't called drillTo yet
     if (!targetStackRef.current || hasCalledDrillToRef.current) {
       return;
@@ -285,15 +280,11 @@ export function SpringstackDemo() {
     const targetStack = targetStackRef.current;
     let cancelled = false;
 
-    console.log('[Demo] Starting drillTo sequence for', targetStack.map(n => n.id));
-
     // Wait for helpers to be available, then trigger drillTo
     const checkHelpers = () => {
       if (cancelled) return;
 
       if (helpersRef.current) {
-        console.log('[Demo] Calling drillTo NOW');
-        console.trace('[Demo] drillTo call stack');
         helpersRef.current.drillTo(targetStack);
         return; // STOP - we're done
       }
@@ -419,19 +410,17 @@ export function SpringstackDemo() {
               </button>
             </div>
           )}
-          renderOverlay={() =>
-            settingsOpen ? (
-              <SpringstackSettings
-                open={settingsOpen}
-                onOpenChange={setSettingsOpen}
-                appearance={appearance}
-                motion={motion}
-                setAppearance={setAppearance}
-                setMotion={setMotion}
-                selectorMotion={selectorMotion}
-              />
-            ) : null
-          }
+          renderOverlay={() => (
+            <SpringstackSettings
+              open={settingsOpen}
+              onOpenChange={setSettingsOpen}
+              appearance={appearance}
+              motion={motion}
+              setAppearance={setAppearance}
+              setMotion={setMotion}
+              selectorMotion={selectorMotion}
+            />
+          )}
           renderPanels={helpers => {
             // Store helpers reference for deep link navigation (only once)
             if (!helpersRef.current) {
