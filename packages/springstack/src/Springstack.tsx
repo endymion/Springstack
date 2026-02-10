@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal, flushSync } from 'react-dom';
 import gsap from 'gsap';
 import type {
   SpringstackHelpers,
@@ -14,6 +14,57 @@ import { useSpringstackController } from './useSpringstackController';
 
 const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+const waitForTrackReady = async (
+  trackRef: React.RefObject<HTMLDivElement>,
+  contentAreaRef: React.RefObject<HTMLDivElement>,
+  panelWidthRef: React.MutableRefObject<number>
+) => {
+  const start = Date.now();
+  while (Date.now() - start < 2000) {
+    const width = contentAreaRef.current?.getBoundingClientRect().width ?? 0;
+    if (trackRef.current && width > 0) {
+      panelWidthRef.current = width;
+      return;
+    }
+    await nextFrame();
+  }
+};
+
+const waitForCard = async <TData,>(
+  containerRef: React.RefObject<HTMLDivElement>,
+  node: SpringstackNode<TData>,
+  waitForCardMs: number,
+  mode: 'abort' | 'push' | 'wait'
+): Promise<{ el: HTMLElement | null; timedOut: boolean }> => {
+  if (mode === 'wait') {
+    waitForCardMs = Number.POSITIVE_INFINITY;
+  }
+  const selector = `[data-item-card][data-item-type="${node.kind}"][data-item-id="${node.id}"]`;
+  const findTarget = () =>
+    containerRef.current?.querySelector(selector) as HTMLElement | null;
+  let el = findTarget();
+  if (el) return { el, timedOut: false };
+  let resolveObserver: (() => void) | null = null;
+  const observerPromise = new Promise<void>(resolve => {
+    resolveObserver = resolve;
+  });
+  const observer = new MutationObserver(() => {
+    const found = findTarget();
+    if (found) {
+      el = found;
+      resolveObserver?.();
+    }
+  });
+  if (containerRef.current) {
+    observer.observe(containerRef.current, { childList: true, subtree: true });
+  }
+  const start = Date.now();
+  while (!el && Date.now() - start < waitForCardMs) {
+    await Promise.race([nextFrame(), observerPromise]);
+  }
+  observer.disconnect();
+  return { el, timedOut: !el };
+};
 
 const getSlotRenderer = <TData,>(
   node: SpringstackNode<TData>,
@@ -66,6 +117,7 @@ const prepareGhost = (shell: HTMLElement) => {
   overlay.appendChild(wrapper);
   const shellClone = shell.cloneNode(true) as HTMLElement;
   gsap.set(shellClone, { force3D: true });
+  shellClone.style.visibility = 'visible';
   shellClone.style.position = 'absolute';
   shellClone.style.left = '0';
   shellClone.style.top = '0';
@@ -147,6 +199,21 @@ const defaultParsePath = (path: string): SpringstackNode<unknown>[] => {
 const stackEquals = (a: SpringstackNode<unknown>[], b: SpringstackNode<unknown>[]) =>
   a.length === b.length && a.every((node, index) => node.kind === b[index]?.kind && node.id === b[index]?.id);
 
+type RoutingInitStatus = 'in-flight' | 'done';
+
+const getRoutingInitRegistry = () => {
+  const global = globalThis as {
+    __SPRINGSTACK_ROUTING_INIT_GUARD__?: Map<string, { status: RoutingInitStatus; at: number }>;
+  };
+  if (!global.__SPRINGSTACK_ROUTING_INIT_GUARD__) {
+    global.__SPRINGSTACK_ROUTING_INIT_GUARD__ = new Map<
+      string,
+      { status: RoutingInitStatus; at: number }
+    >();
+  }
+  return global.__SPRINGSTACK_ROUTING_INIT_GUARD__;
+};
+
 export function Springstack<TData>(props: SpringstackProps<TData>) {
   const {
     initialStack,
@@ -172,10 +239,16 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
   });
 
   const { stack, activeDepth, isTransitioning, timingConfig, queueTick } = controller;
+  const timingConfigRef = useRef(timingConfig);
   const [isMorphing, setIsMorphing] = useState(false);
   const [isDeepLinking, setIsDeepLinking] = useState(false);
+  const isDeepLinkingRef = useRef(false);
   const [hiddenCardId, setHiddenCardId] = useState<string | null>(null);
   const [hiddenCardDepth, setHiddenCardDepth] = useState<number | null>(null);
+  const [hiddenPanelKey, setHiddenPanelKey] = useState<string | null>(null);
+  const [pendingCrumbKey, setPendingCrumbKey] = useState<string | null>(null);
+  const pendingCrumbKeyRef = useRef<string | null>(null);
+  const hiddenCardElsRef = useRef<{ shell: HTMLElement; content: HTMLElement } | null>(null);
   const [morphing, setMorphing] = useState<{
     kind: string;
     id: string;
@@ -185,6 +258,20 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
   const updateModeRef = useRef<'push' | 'replace'>('push');
   const isApplyingRouteRef = useRef(false);
   const lastPathRef = useRef<string | null>(null);
+  const pendingDeepLinkPathRef = useRef<SpringstackNode<TData>[] | null>(null);
+  const deepLinkRunIdRef = useRef(0);
+  const [deepLinkTick, setDeepLinkTick] = useState(0);
+  const deepLinkInProgressRef = useRef(false);
+  const lastScheduledDeepLinkRef = useRef<string | null>(null);
+  const deepLinkActiveRunIdRef = useRef<number | null>(null);
+  const debugEnabled =
+    typeof globalThis !== 'undefined' &&
+    (globalThis as { __SPRINGSTACK_DEBUG__?: boolean }).__SPRINGSTACK_DEBUG__ === true;
+  const debugLog = (...args: unknown[]) => {
+    if (debugEnabled) {
+      console.log('[StackNav][debug]', ...args);
+    }
+  };
 
   const containerRef = useRef<HTMLDivElement>(null);
   const contentAreaRef = useRef<HTMLDivElement>(null);
@@ -192,6 +279,8 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
   const breadcrumbWrapperRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const panelWidthRef = useRef(0);
+  const displayDepthRef = useRef(0);
+  const trackTweenRef = useRef<gsap.core.Tween | null>(null);
   const skipAutoTrackTweenRef = useRef(false);
   const panelRefsRef = useRef(new Map<string, HTMLDivElement>());
 
@@ -203,11 +292,21 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       push: controller.push,
       pop: controller.pop,
       popTo: controller.popTo,
-      drillTo: controller.drillTo,
+      drillTo: (path: SpringstackNode<TData>[]) => {
+        pendingDeepLinkPathRef.current = path;
+        deepLinkRunIdRef.current += 1;
+        setDeepLinkTick(tick => tick + 1);
+        return Promise.resolve();
+      },
       setStack: nextStack => {
         updateModeRef.current = 'replace';
         controller.setStack(nextStack);
-        controller.setActiveDepth(Math.max(0, nextStack.length - 1));
+        const nextDepth = Math.max(0, nextStack.length - 1);
+        const targetDepth =
+          (controller.isTransitioning || isDeepLinkingRef.current)
+            ? controller.activeDepth
+            : nextDepth;
+        controller.setActiveDepth(targetDepth);
         setHiddenCardId(null);
         setHiddenCardDepth(null);
         setMorphing(null);
@@ -260,7 +359,8 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       controller.push,
       controller.stack,
       enterAnimation,
-      timingConfig.enterEase
+      timingConfig.enterEase,
+      isDeepLinking
     ]
   );
 
@@ -269,6 +369,8 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     routingConfig.enabled ?? (typeof window !== 'undefined' && typeof history !== 'undefined');
   const basePath = normalizeBasePath(routingConfig.basePath);
   const useHash = routingConfig.useHash ?? false;
+  const waitForCardMs = routingConfig.waitForCardMs ?? 15000;
+  const onMissingCard = routingConfig.onMissingCard ?? 'abort';
   const parsePath = (path: string) => {
     const parsed = (routingConfig.parse ?? defaultParsePath)(stripBasePath(path, basePath)) as SpringstackNode<TData>[];
     if (parsed.length === 0) return initialStack;
@@ -296,6 +398,7 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     return window.location.pathname || '/';
   };
   const updateUrl = (path: string, mode: 'push' | 'replace') => {
+    debugLog('updateUrl', { path, mode });
     if (useHash) {
       if (mode === 'replace') {
         history.replaceState(null, '', `#${path}`);
@@ -318,24 +421,72 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     setMorphing(null);
   };
 
+  const scheduleDeepLink = useCallback(
+    (path: SpringstackNode<TData>[], reason: string) => {
+      if (!path || path.length === 0) return;
+      const pathCopy = path.map(node => node);
+      const key = pathCopy.map(node => `${node.kind}:${node.id}`).join('/');
+      if (deepLinkInProgressRef.current && lastScheduledDeepLinkRef.current === key) {
+        debugLog('deepLink:schedule:skip', { reason: 'in-progress', key, source: reason });
+        return;
+      }
+      const pendingKey = pendingDeepLinkPathRef.current
+        ? pendingDeepLinkPathRef.current.map(node => `${node.kind}:${node.id}`).join('/')
+        : null;
+      if (pendingKey === key) {
+        debugLog('deepLink:schedule:skip', { reason: 'pending-same', key, source: reason });
+        return;
+      }
+      pendingDeepLinkPathRef.current = pathCopy;
+      lastScheduledDeepLinkRef.current = key;
+      deepLinkActiveRunIdRef.current = null;
+      deepLinkRunIdRef.current += 1;
+      setDeepLinkTick(tick => tick + 1);
+      debugLog('deepLink:schedule', { key, runId: deepLinkRunIdRef.current, source: reason });
+    },
+    [debugLog]
+  );
+
   useEffect(() => {
     if (!routingEnabled || typeof window === 'undefined') return;
     let cancelled = false;
     const currentPath = getLocationPath();
     lastPathRef.current = currentPath;
     const parsed = parsePath(currentPath);
+    debugLog('routing:init', {
+      currentPath,
+      parsed: parsed.map(node => `${node.kind}:${node.id}`),
+      initialStack: initialStack.map(node => `${node.kind}:${node.id}`)
+    });
+    const root = initialStack[0];
+    const guardKey = [
+      useHash ? 'hash' : 'path',
+      basePath || '/',
+      root ? `${root.kind}:${root.id}` : 'no-root',
+      currentPath
+    ].join('|');
+    const guard = getRoutingInitRegistry();
+    const existing = guard.get(guardKey);
+    if (existing) {
+      const currentStack = controller.getStack();
+      if (stackEquals(parsed as SpringstackNode<unknown>[], currentStack as SpringstackNode<unknown>[])) {
+        debugLog('routing:init:skipped', { guardKey, status: existing.status });
+        return;
+      }
+    }
+    guard.set(guardKey, { status: 'in-flight', at: Date.now() });
     if (parsed.length === 0 || stackEquals(parsed as SpringstackNode<unknown>[], initialStack as SpringstackNode<unknown>[])) {
+      guard.set(guardKey, { status: 'done', at: Date.now() });
       return;
     }
     isApplyingRouteRef.current = true;
     updateModeRef.current = 'replace';
-    controller
-      .drillTo(parsed)
-      .finally(() => {
-        if (cancelled) return;
-        isApplyingRouteRef.current = false;
-        lastPathRef.current = currentPath;
-      });
+    debugLog('routing:init:drillTo', { path: parsed.map(node => `${node.kind}:${node.id}`) });
+    scheduleDeepLink(parsed, 'routing:init');
+    guard.set(guardKey, { status: 'done', at: Date.now() });
+    return () => {
+      cancelled = true;
+    };
     return () => {
       cancelled = true;
     };
@@ -346,16 +497,28 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     const handler = () => {
       const path = getLocationPath();
       const parsed = parsePath(path);
+      debugLog('routing:popstate', {
+        path,
+        parsed: parsed.map(node => `${node.kind}:${node.id}`)
+      });
       isApplyingRouteRef.current = true;
+      isDeepLinkingRef.current = true;
+      setIsDeepLinking(true);
       updateModeRef.current = 'replace';
       const apply = async () => {
-        if (parsed.length === 0) {
-          resetStack(initialStack);
-        } else {
-          await controller.drillTo(parsed);
-        }
-        lastPathRef.current = path;
+      if (parsed.length === 0) {
+        resetStack(initialStack);
+        setTrackX(0);
         isApplyingRouteRef.current = false;
+        if (isDeepLinkingRef.current) {
+          isDeepLinkingRef.current = false;
+          setIsDeepLinking(false);
+        }
+      } else {
+        scheduleDeepLink(parsed, 'routing:popstate');
+      }
+        lastPathRef.current = path;
+        debugLog('routing:popstate:done', { path });
       };
       void apply();
     };
@@ -369,20 +532,35 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     if (isApplyingRouteRef.current) return;
     const path = serializeStack(stack);
     if (path === lastPathRef.current) return;
+    debugLog('routing:stackChange', {
+      path,
+      stack: stack.map(node => `${node.kind}:${node.id}`),
+      mode: updateModeRef.current
+    });
     updateUrl(path, updateModeRef.current);
     lastPathRef.current = path;
     updateModeRef.current = 'push';
   }, [stack, routingEnabled]);
 
+  // Removed fallback scheduler to prevent duplicate deep-link runs.
+
   useLayoutEffect(() => {
     if (!trackRef.current) return;
+    if (isDeepLinkingRef.current) return;
+    if (controller.isTransitioning) return;
     if (skipAutoTrackTweenRef.current) return;
+    if (trackTweenRef.current) return;
     gsap.to(trackRef.current, {
       x: -activeDepth * panelWidthRef.current,
       duration: timingConfig.trackDurationMs / 1000,
       ease: timingConfig.trackEase
     });
+    displayDepthRef.current = activeDepth;
   }, [activeDepth, timingConfig.trackDurationMs, timingConfig.trackEase]);
+
+  useEffect(() => {
+    timingConfigRef.current = timingConfig;
+  }, [timingConfig]);
 
   useEffect(() => {
     if (!breadcrumbRowRef.current || !breadcrumbWrapperRef.current) return;
@@ -409,9 +587,12 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     updateWidth();
     const observer = new ResizeObserver(() => {
       updateWidth();
-      if (trackRef.current && !skipAutoTrackTweenRef.current) {
-        gsap.set(trackRef.current, { x: -activeDepth * panelWidthRef.current });
-      }
+      if (!trackRef.current) return;
+      if (skipAutoTrackTweenRef.current) return;
+      if (trackTweenRef.current) return;
+      if (isDeepLinkingRef.current || controller.isTransitioning) return;
+      gsap.set(trackRef.current, { x: -activeDepth * panelWidthRef.current });
+      displayDepthRef.current = activeDepth;
     });
     observer.observe(contentAreaRef.current);
     return () => observer.disconnect();
@@ -419,12 +600,27 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
 
   const runPreparedMorphToCrumb = async (prepared: ReturnType<typeof prepareGhost>, node: SpringstackNode<TData>) => {
     if (!containerRef.current) return;
+    const config = timingConfigRef.current;
     const { overlay, wrapper, shellClone, shellRect } = prepared;
-    await nextFrame();
-    await nextFrame();
-    const target = containerRef.current.querySelector(
-      `[data-crumb-target="${node.kind}:${node.id}"]`
-    ) as HTMLElement | null;
+    const selector = `[data-crumb-target="${node.kind}:${node.id}"]`;
+    const findTarget = () => containerRef.current?.querySelector(selector) as HTMLElement | null;
+    let target = findTarget();
+    if (!target) {
+      const start = Date.now();
+      const observer = new MutationObserver(() => {
+        const found = findTarget();
+        if (found) {
+          target = found;
+          observer.disconnect();
+        }
+      });
+      observer.observe(containerRef.current, { childList: true, subtree: true });
+      while (!target && Date.now() - start < 2000) {
+        await nextFrame();
+        target = findTarget();
+      }
+      observer.disconnect();
+    }
     if (!target) {
       overlay.remove();
       return;
@@ -435,14 +631,14 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       overlay.remove();
       return;
     }
+    gsap.set(targetShell, { opacity: 0 });
+    gsap.set(targetContent, { opacity: 0 });
     const targetShellRect = targetShell.getBoundingClientRect();
     const targetStyles = window.getComputedStyle(targetShell);
     const padLeft = parseFloat(targetStyles.paddingLeft || '0');
     const padTop = parseFloat(targetStyles.paddingTop || '0');
     const shellDy = targetShellRect.top + padTop - shellRect.top;
     const shellDx = targetShellRect.left + padLeft - shellRect.left;
-    gsap.set(targetShell, { opacity: 0 });
-    gsap.set(targetContent, { opacity: 0 });
     const ghostContent = shellClone.querySelector('[data-card-content]') as HTMLElement | null;
     if (ghostContent) {
       gsap.set(ghostContent, { fontSize: '0.875rem', lineHeight: '1.25rem' });
@@ -451,7 +647,7 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     const completion = new Promise<void>(res => {
       resolve = res;
     });
-    const duration = timingConfig.morphDurationMs / 1000;
+    const duration = config.morphDurationMs / 1000;
     const timeline = gsap.timeline({
       onStart: () => setIsMorphing(true),
       onComplete: () => {
@@ -459,6 +655,11 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
         gsap.set(targetShell, { clearProps: 'opacity' });
         gsap.set(targetContent, { clearProps: 'opacity' });
         overlay.remove();
+        const crumbKey = `${node.kind}:${node.id}`;
+        if (pendingCrumbKeyRef.current === crumbKey) {
+          pendingCrumbKeyRef.current = null;
+        }
+        setPendingCrumbKey(prev => (prev === crumbKey ? null : prev));
         resolve?.();
       }
     });
@@ -468,12 +669,13 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
         x: shellDx,
         y: shellDy,
         duration,
-        ease: timingConfig.morphEase
+        ease: config.morphEase
       },
       0
     );
-    const fadeDuration = Math.min(timingConfig.fadeDurationMs / 1000, duration * 0.4);
-    const fadeStart = duration - fadeDuration;
+    const fadeDuration = Math.min(config.fadeDurationMs / 1000, duration * 0.4);
+    const fadeInStart = duration - fadeDuration;
+    const fadeOutStart = Math.max(0, fadeInStart + 0.01);
     timeline.add(() => {
       const refreshed = targetShell.getBoundingClientRect();
       const refreshedStyles = window.getComputedStyle(targetShell);
@@ -485,36 +687,38 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
         x: freshDx,
         y: freshDy,
         duration: fadeDuration,
-        ease: timingConfig.fadeEase
+        ease: config.fadeEase
       });
-    }, fadeStart);
+    }, fadeInStart);
+    timeline.add(() => {
+      gsap.set(targetShell, { opacity: 1 });
+      gsap.set(targetContent, { opacity: 1 });
+      const crumbKey = `${node.kind}:${node.id}`;
+      if (pendingCrumbKeyRef.current === crumbKey) {
+        pendingCrumbKeyRef.current = null;
+      }
+      setPendingCrumbKey(prev => (prev === crumbKey ? null : prev));
+    }, fadeInStart);
     timeline.to(
       shellClone,
       {
         opacity: 0,
         duration: fadeDuration,
-        ease: timingConfig.fadeEase
+        ease: config.fadeEase
       },
-      fadeStart
+      fadeOutStart
     );
-    timeline.to(
-      targetShell,
-      {
-        opacity: 1,
-        duration: fadeDuration,
-        ease: timingConfig.fadeEase
-      },
-      fadeStart
-    );
-    timeline.to(
-      targetContent,
-      {
-        opacity: 1,
-        duration: fadeDuration,
-        ease: timingConfig.fadeEase
-      },
-      fadeStart
-    );
+    if (ghostContent) {
+      timeline.to(
+        ghostContent,
+        {
+          opacity: 0,
+          duration: fadeDuration,
+          ease: config.fadeEase
+        },
+        fadeOutStart
+      );
+    }
     await completion;
   };
 
@@ -524,6 +728,7 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     targetDepth: number
   ) => {
     if (!containerRef.current) return;
+    const config = timingConfigRef.current;
     const { overlay, wrapper, shellClone, shellRect } = prepared;
     await nextFrame();
     await nextFrame();
@@ -550,7 +755,7 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       return;
     }
     const targetCardRect = target.getBoundingClientRect();
-    const duration = timingConfig.morphDurationMs / 1000;
+    const duration = config.morphDurationMs / 1000;
     const shellDy = targetCardRect.top - shellRect.top;
     const shellDx = targetCardRect.left - shellRect.left;
     gsap.set(targetShell, { opacity: 0 });
@@ -581,11 +786,11 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
         x: shellDx,
         y: shellDy,
         duration,
-        ease: timingConfig.morphEase
+        ease: config.morphEase
       },
       0
     );
-    const fadeDuration = timingConfig.fadeDurationMs / 1000;
+    const fadeDuration = config.fadeDurationMs / 1000;
     const fadeStart = Math.max(0, duration - fadeDuration);
     timeline.add(() => {
       const refreshed = target.getBoundingClientRect();
@@ -600,52 +805,129 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       {
         opacity: 0,
         duration: fadeDuration,
-        ease: timingConfig.fadeEase
+        ease: config.fadeEase
       },
       fadeStart
     );
     await completion;
   };
 
-  const getWaitBeat = () => timingConfig.beatMs;
+  const getWaitBeat = () => timingConfigRef.current.beatMs;
+  const setTrackX = (depth: number) => {
+    displayDepthRef.current = depth;
+    if (!trackRef.current || panelWidthRef.current <= 0) return;
+    gsap.set(trackRef.current, { x: -depth * panelWidthRef.current });
+  };
+  const readPanelWidth = () =>
+    contentAreaRef.current?.getBoundingClientRect().width ?? 0;
+  const animateTrack = async (fromDepth: number, toDepth: number) => {
+    await waitForTrackReady(trackRef, contentAreaRef, panelWidthRef);
+    const width = readPanelWidth();
+    panelWidthRef.current = width;
+    if (!trackRef.current || width <= 0) return;
+    trackTweenRef.current?.kill();
+    gsap.set(trackRef.current, { x: -fromDepth * width });
+    return new Promise<void>(resolve => {
+      trackTweenRef.current = gsap.to(trackRef.current, {
+        x: -toDepth * width,
+        duration: timingConfig.trackDurationMs / 1000,
+        ease: timingConfig.trackEase,
+        overwrite: true,
+        onComplete: () => {
+          displayDepthRef.current = toDepth;
+          trackTweenRef.current = null;
+          resolve();
+        }
+      });
+    });
+  };
 
-  const runPush = async (node: SpringstackNode<TData>, sourceEl: HTMLElement | null) => {
+  const runPush = async (
+    node: SpringstackNode<TData>,
+    sourceEl: HTMLElement | null,
+    fromDepthOverride?: number
+  ) => {
     navDirectionRef.current = 'forward';
     controller.setTransitioning(true);
-    const shell = sourceEl ? getShellElement(sourceEl) : null;
-    const prepared = shell ? prepareGhost(shell) : null;
+    const prevDepth = displayDepthRef.current;
     const sourceType = sourceEl?.getAttribute('data-item-type');
     const sourceId = sourceEl?.getAttribute('data-item-id');
-    if (sourceType && sourceId) {
-      setHiddenCardId(`${sourceType}:${sourceId}`);
-      setHiddenCardDepth(activeDepth);
+    const nextCrumbKey = `${node.kind}:${node.id}`;
+    pendingCrumbKeyRef.current = nextCrumbKey;
+    let prepared: ReturnType<typeof prepareGhost> | null = null;
+    if (sourceEl) {
+      const sourceShell = getShellElement(sourceEl);
+      const sourceContent = getContentElement(sourceEl);
+      if (sourceShell && sourceContent) {
+        hiddenCardElsRef.current = { shell: sourceShell, content: sourceContent };
+        prepared = prepareGhost(sourceShell);
+        gsap.set(sourceShell, { visibility: 'hidden', pointerEvents: 'none' });
+        gsap.set(sourceContent, { visibility: 'hidden' });
+      }
     }
     setMorphing({ kind: node.kind, id: node.id, direction: 'toCrumb' });
     const nextStack = [...controller.getStack(), node];
-    controller.setStack(nextStack);
+    flushSync(() => {
+      if (sourceType && sourceId) {
+        setHiddenCardId(`${sourceType}:${sourceId}`);
+        setHiddenCardDepth(activeDepth);
+      }
+      setPendingCrumbKey(nextCrumbKey);
+      controller.setStack(nextStack);
+    });
     if (prepared) {
       await runPreparedMorphToCrumb(prepared, node);
     } else {
       await wait(getWaitBeat());
+      pendingCrumbKeyRef.current = null;
+      setPendingCrumbKey(prev => (prev === nextCrumbKey ? null : prev));
     }
+    await waitForTrackReady(trackRef, contentAreaRef, panelWidthRef);
     const nextDepth = nextStack.length - 1;
     const panelWidth = panelWidthRef.current;
+    let fromDepth = prevDepth;
+    let trackX = 0;
+    if (trackRef.current && panelWidth > 0) {
+      trackX = Number(gsap.getProperty(trackRef.current, 'x')) || 0;
+      fromDepth = Math.round(-trackX / panelWidth);
+    }
+    if (isDeepLinkingRef.current) {
+      fromDepth = displayDepthRef.current;
+    }
+    if (typeof fromDepthOverride === 'number') {
+      fromDepth = fromDepthOverride;
+    }
+    fromDepth = Math.min(nextDepth, Math.max(0, fromDepth));
+    debugLog('push:track', {
+      fromDepth,
+      nextDepth,
+      panelWidth,
+      trackX,
+      activeDepth: controller.activeDepth,
+      displayDepth: displayDepthRef.current,
+      deepLink: isDeepLinkingRef.current
+    });
     const targetTrackX = -nextDepth * panelWidth;
+    const targetPanel = panelRefsRef.current.get(node.kind);
+    if (targetPanel) {
+      targetPanel.style.visibility = 'hidden';
+    }
+    setHiddenPanelKey(node.kind);
     skipAutoTrackTweenRef.current = true;
     controller.setActiveDepth(nextDepth);
-    if (trackRef.current) {
-      await new Promise<void>(resolve => {
-        gsap.to(trackRef.current, {
-          x: targetTrackX,
-          duration: timingConfig.trackDurationMs / 1000,
-          ease: timingConfig.trackEase,
-          onComplete: resolve
-        });
-      });
+    if (targetPanel) {
+      targetPanel.style.visibility = '';
     }
+    setHiddenPanelKey(null);
+    await animateTrack(fromDepth, nextDepth);
     await nextFrame();
     skipAutoTrackTweenRef.current = false;
     setMorphing(null);
+    if (hiddenCardElsRef.current) {
+      gsap.set(hiddenCardElsRef.current.shell, { clearProps: 'opacity,pointerEvents,visibility' });
+      gsap.set(hiddenCardElsRef.current.content, { clearProps: 'opacity,visibility' });
+      hiddenCardElsRef.current = null;
+    }
     controller.setTransitioning(false);
   };
 
@@ -654,11 +936,15 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     const currentStack = controller.getStack();
     if (currentStack.length <= 1) return;
     controller.setTransitioning(true);
+    let fromDepth = displayDepthRef.current;
     const node = currentStack[currentStack.length - 1];
     const nextStack = currentStack.slice(0, -1);
     const nextDepth = nextStack.length - 1;
     const panelWidth = panelWidthRef.current;
-    const targetTrackX = -nextDepth * panelWidth;
+    if (trackRef.current && panelWidth > 0) {
+      const trackX = Number(gsap.getProperty(trackRef.current, 'x')) || 0;
+      fromDepth = Math.max(0, Math.round(-trackX / panelWidth));
+    }
     const crumbEl = containerRef.current?.querySelector(
       `[data-crumb-target="${node.kind}:${node.id}"]`
     ) as HTMLElement | null;
@@ -670,16 +956,7 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     controller.setStack(nextStack);
     skipAutoTrackTweenRef.current = true;
     controller.setActiveDepth(nextDepth);
-    if (trackRef.current) {
-      await new Promise<void>(resolve => {
-        gsap.to(trackRef.current, {
-          x: targetTrackX,
-          duration: timingConfig.trackDurationMs / 1000,
-          ease: timingConfig.trackEase,
-          onComplete: resolve
-        });
-      });
-    }
+    await animateTrack(fromDepth, nextDepth);
     await nextFrame();
     skipAutoTrackTweenRef.current = false;
     try {
@@ -689,16 +966,15 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
         await wait(getWaitBeat());
       }
     } finally {
-      if (hiddenCardDepth !== null && nextDepth <= hiddenCardDepth) {
-        setHiddenCardId(null);
-        setHiddenCardDepth(null);
-      }
+      setHiddenCardId(null);
+      setHiddenCardDepth(null);
     }
     setMorphing(null);
     controller.setTransitioning(false);
   };
 
   const runPopToIndex = async (targetIndex: number) => {
+    const config = timingConfigRef.current;
     console.log('[StackNav] popTo:start', {
       targetIndex,
       stackSize: controller.getStack().length
@@ -711,7 +987,7 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
         stackSize: controller.getStack().length
       });
       await runPop();
-      await wait(timingConfig.beatMs * timingConfig.popPauseBeats);
+      await wait(config.beatMs * config.popPauseBeats);
     }
     console.log('[StackNav] popTo:done', {
       stackSize: controller.getStack().length
@@ -719,6 +995,7 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
   };
 
   const runDrillToPath = async (path: SpringstackNode<TData>[]) => {
+    const config = timingConfigRef.current;
     console.log('[StackNav] drillTo:start', {
       path: path.map(node => `${node.kind}:${node.id}`),
       stackSize: controller.getStack().length
@@ -732,29 +1009,42 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     if (!currentRoot || currentRoot.id !== targetRoot.id || currentRoot.kind !== targetRoot.kind) {
       controller.setStack([targetRoot]);
       controller.setActiveDepth(0);
+      setTrackX(0);
       setHiddenCardId(null);
       setHiddenCardDepth(null);
     }
     console.log('[StackNav] drillTo:root', {
       root: `${targetRoot.kind}:${targetRoot.id}`
     });
+    isDeepLinkingRef.current = true;
     setIsDeepLinking(true);
-    await wait(timingConfig.beatMs * timingConfig.pushPauseBeats);
+    navDirectionRef.current = 'forward';
+    setTrackX(0);
+    await wait(config.beatMs * config.pushPauseBeats);
+    await waitForTrackReady(trackRef, contentAreaRef, panelWidthRef);
+    setTrackX(0);
+    let drillDepth = 0;
     for (const node of path.slice(1)) {
       console.log('[StackNav] drillTo:push', {
         nodeId: node.id,
         nodeKind: node.kind
       });
-      const selector = `[data-item-card][data-item-type="${node.kind}"][data-item-id="${node.id}"]`;
-      const start = Date.now();
-      let el = containerRef.current?.querySelector(selector) as HTMLElement | null;
-      while (!el && Date.now() - start < 2000) {
-        await nextFrame();
-        el = containerRef.current?.querySelector(selector) as HTMLElement | null;
+      const result = await waitForCard(containerRef, node, waitForCardMs, onMissingCard);
+      if (!result.el && result.timedOut && onMissingCard === 'abort') {
+        console.log('[StackNav] drillTo:abort', {
+          nodeId: node.id,
+          nodeKind: node.kind,
+          reason: 'missing-card'
+        });
+        isDeepLinkingRef.current = false;
+        setIsDeepLinking(false);
+        return;
       }
-      await runPush(node, el ?? null);
-      await wait(timingConfig.beatMs * timingConfig.pushPauseBeats);
+      await runPush(node, result.el ?? null, drillDepth);
+      drillDepth += 1;
+      await wait(config.beatMs * config.pushPauseBeats);
     }
+    isDeepLinkingRef.current = false;
     setIsDeepLinking(false);
     console.log('[StackNav] drillTo:done', {
       stackSize: controller.getStack().length
@@ -762,23 +1052,136 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
   };
 
   useEffect(() => {
+    const path = pendingDeepLinkPathRef.current;
+    if (!path || path.length === 0) return;
+    const pathSnapshot = path.map(node => node);
+    pendingDeepLinkPathRef.current = null;
+    const runId = deepLinkRunIdRef.current;
+    let cancelled = false;
+    if (deepLinkActiveRunIdRef.current === runId) {
+      return;
+    }
+    deepLinkActiveRunIdRef.current = runId;
+
+    const run = async () => {
+      console.log('[StackNav] deepLink:run:start', {
+        path: pathSnapshot.map(node => `${node.kind}:${node.id}`),
+        runId
+      });
+      try {
+        isApplyingRouteRef.current = true;
+        isDeepLinkingRef.current = true;
+        deepLinkInProgressRef.current = true;
+        setIsDeepLinking(true);
+        updateModeRef.current = 'replace';
+        navDirectionRef.current = 'forward';
+
+        const root = initialStack[0];
+        if (root) {
+          controller.setStack([root]);
+          controller.setActiveDepth(0);
+          setTrackX(0);
+          setHiddenCardId(null);
+          setHiddenCardDepth(null);
+          setMorphing(null);
+        }
+
+        const config = timingConfigRef.current;
+        await wait(config.beatMs * config.pushPauseBeats);
+        setTrackX(0);
+
+        console.log('[StackNav] deepLink:run:beforeLoop', {
+          pathLength: pathSnapshot.length,
+          runId,
+          currentRunId: deepLinkRunIdRef.current
+        });
+
+        for (const node of pathSnapshot.slice(1)) {
+          if (cancelled || runId !== deepLinkRunIdRef.current) return;
+          console.log('[StackNav] deepLink:waitForCard', {
+            node: `${node.kind}:${node.id}`,
+            selector: `[data-item-card][data-item-type="${node.kind}"][data-item-id="${node.id}"]`
+          });
+          const result = await waitForCard(containerRef, node, waitForCardMs, onMissingCard);
+          console.log('[StackNav] deepLink:waitForCard:result', {
+            node: `${node.kind}:${node.id}`,
+            found: Boolean(result.el),
+            timedOut: result.timedOut
+          });
+          if (!result.el && result.timedOut && onMissingCard === 'abort') {
+            debugLog('deepLink:abort', {
+              node: `${node.kind}:${node.id}`,
+              runId
+            });
+            break;
+          }
+          console.log('[StackNav] deepLink:runPush', {
+            node: `${node.kind}:${node.id}`,
+            hasSource: Boolean(result.el)
+          });
+          await controller.push(node, result.el ?? null);
+          await wait(config.beatMs * config.pushPauseBeats);
+        }
+
+        if (cancelled || runId !== deepLinkRunIdRef.current) return;
+        isDeepLinkingRef.current = false;
+        deepLinkInProgressRef.current = false;
+        setIsDeepLinking(false);
+        isApplyingRouteRef.current = false;
+        lastPathRef.current = getLocationPath();
+        debugLog('deepLink:run:done', { runId });
+      } catch (error) {
+        console.error('[StackNav] deepLink:run:error', error);
+      } finally {
+        if (deepLinkInProgressRef.current && runId === deepLinkRunIdRef.current) {
+          deepLinkInProgressRef.current = false;
+        }
+      }
+    };
+
+    void run();
+    return () => {
+      if (runId !== deepLinkRunIdRef.current) {
+        cancelled = true;
+      }
+      if (deepLinkActiveRunIdRef.current === runId) {
+        deepLinkActiveRunIdRef.current = null;
+      }
+    };
+  }, [deepLinkTick, initialStack, waitForCardMs, onMissingCard]);
+
+  useEffect(() => {
     let cancelled = false;
     const process = async () => {
       const nextOp = controller.consumeNextOperation();
       if (!nextOp) return;
       if (cancelled) return;
-      if (nextOp.type === 'push' && nextOp.node) {
-        await runPush(nextOp.node, nextOp.sourceEl ?? null);
-      }
-      if (nextOp.type === 'pop') {
-        await runPop();
-      }
-      if (nextOp.type === 'popTo' && typeof nextOp.index === 'number') {
-        await runPopToIndex(nextOp.index);
+      debugLog('queue:start', {
+        opId: nextOp.id,
+        type: nextOp.type,
+        path: nextOp.path?.map(node => `${node.kind}:${node.id}`),
+        stackSize: controller.getStack().length
+      });
+      if (nextOp.type !== 'drillTo') {
+        isApplyingRouteRef.current = false;
+        updateModeRef.current = 'push';
       }
       if (nextOp.type === 'drillTo' && nextOp.path) {
-        await runDrillToPath(nextOp.path);
+        pendingDeepLinkPathRef.current = nextOp.path;
+        deepLinkRunIdRef.current += 1;
+        setDeepLinkTick(tick => tick + 1);
+      } else if (nextOp.type === 'push' && nextOp.node) {
+        await runPush(nextOp.node, nextOp.sourceEl ?? null);
+      } else if (nextOp.type === 'pop') {
+        await runPop();
+      } else if (nextOp.type === 'popTo' && typeof nextOp.index === 'number') {
+        await runPopToIndex(nextOp.index);
       }
+      debugLog('queue:done', {
+        opId: nextOp.id,
+        type: nextOp.type,
+        stackSize: controller.getStack().length
+      });
       nextOp.resolve();
     };
     process();
@@ -794,11 +1197,7 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       morphing.kind === node.kind &&
       morphing.id === node.id;
     const allowReveal = isMorphingBack && isMorphing;
-    return (
-      hiddenCardId === cardKey &&
-      (isMorphing || isTransitioning || (hiddenCardDepth !== null && activeDepth !== hiddenCardDepth)) &&
-      !allowReveal
-    );
+    return hiddenCardId === cardKey && !allowReveal;
   };
 
   const renderCrumb = (node: SpringstackNode<TData>) => {
@@ -811,8 +1210,20 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     ...helpers,
     getCardProps: (node, options) => ({
       ...helpers.getCardProps(node, options),
-      className: shouldHideCard(node) ? 'opacity-0 pointer-events-none' : undefined
-    })
+      className: shouldHideCard(node) ? 'invisible pointer-events-none' : undefined
+    }),
+    getPanelProps: panelKey => {
+      const base = helpers.getPanelProps(panelKey);
+      if (hiddenPanelKey === panelKey) {
+        const baseStyle = (base as { style?: React.CSSProperties }).style ?? {};
+        return {
+          ...base,
+          'data-panel-hidden': 'true',
+          style: { ...baseStyle, visibility: 'hidden' }
+        };
+      }
+      return base;
+    }
   });
 
   const overlay = renderOverlay ? renderOverlay(helpers) : null;
@@ -834,7 +1245,11 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       {renderHeader?.(helpers)}
       <div ref={breadcrumbWrapperRef} className="relative z-20 overflow-hidden">
         <div ref={breadcrumbRowRef} className="flex flex-wrap gap-2 rounded-md bg-card p-2">
-          {stack.map((node, index) => (
+          {stack.map((node, index) => {
+            const crumbKey = `${node.kind}:${node.id}`;
+            const pendingKey = pendingCrumbKeyRef.current ?? pendingCrumbKey;
+            const isPendingCrumb = pendingKey === crumbKey;
+            return (
             <div
               key={`${node.kind}-${node.id}`}
               data-card-shell="true"
@@ -842,13 +1257,15 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
               onClick={() => helpers.popTo(index)}
               className={`flex cursor-pointer flex-col gap-1 rounded-md p-2 text-sm transition-colors ${
                 index === stack.length - 1 ? 'bg-selected' : 'bg-muted'
-              }`}
+              } ${isPendingCrumb ? 'invisible pointer-events-none' : ''}`}
+              style={isPendingCrumb ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
             >
               <div data-card-content="true" className="flex flex-col">
                 <div className="flex items-start gap-1">{renderCrumb(node)}</div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
