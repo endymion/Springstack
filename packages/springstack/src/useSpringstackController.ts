@@ -3,6 +3,8 @@ import type { SpringstackNode, SpringstackTimingConfig, SpringstackTimingMode } 
 import { resolveTimingConfig } from './timing';
 
 interface StackOperation<TData = unknown> {
+  id: number;
+  createdAt: number;
   type: 'push' | 'pop' | 'popTo' | 'drillTo';
   node?: SpringstackNode<TData>;
   sourceEl?: HTMLElement | null;
@@ -53,6 +55,17 @@ export const useSpringstackController = <TData,>(
   const [queueTick, setQueueTick] = useState(0);
   const queueRef = useRef<StackOperation<TData>[]>([]);
   const processingRef = useRef(false);
+  const processingOpRef = useRef<StackOperation<TData> | null>(null);
+  const opIdRef = useRef(0);
+
+  const isDebugEnabled = () =>
+    typeof globalThis !== 'undefined' && (globalThis as { __SPRINGSTACK_DEBUG__?: boolean }).__SPRINGSTACK_DEBUG__ === true;
+
+  const pathsEqual = (a?: SpringstackNode<TData>[], b?: SpringstackNode<TData>[]) => {
+    if (!a || !b) return false;
+    if (a.length !== b.length) return false;
+    return a.every((node, index) => node.kind === b[index]?.kind && node.id === b[index]?.id);
+  };
 
   const timingConfig = useMemo(
     () => resolveTimingConfig(timingMode, timingConfigOverrides),
@@ -84,10 +97,43 @@ export const useSpringstackController = <TData,>(
     [onStackChange]
   );
 
-  const enqueue = useCallback((operation: Omit<StackOperation<TData>, 'resolve'>) => {
+  const enqueue = useCallback((operation: Omit<StackOperation<TData>, 'resolve' | 'id' | 'createdAt'>) => {
     setQueueTick(tick => tick + 1);
+    const opId = opIdRef.current++;
+    const createdAt = Date.now();
+    const queueSize = queueRef.current.length + 1;
+    if (operation.type === 'drillTo') {
+      const currentOp = processingOpRef.current;
+      const queuedMatch = queueRef.current.some(
+        op => op.type === 'drillTo' && pathsEqual(op.path, operation.path)
+      );
+      const activeMatch =
+        currentOp?.type === 'drillTo' && pathsEqual(currentOp.path, operation.path);
+      if (queuedMatch || activeMatch) {
+        if (isDebugEnabled()) {
+          console.log('[StackNav][debug] enqueue:skip', {
+            opId,
+            type: operation.type,
+            reason: queuedMatch ? 'queued-duplicate' : 'active-duplicate',
+            path: operation.path?.map(node => `${node.kind}:${node.id}`)
+          });
+        }
+        return Promise.resolve();
+      }
+    }
+    if (isDebugEnabled()) {
+      console.log('[StackNav][debug] enqueue', {
+        opId,
+        type: operation.type,
+        queueSize,
+        path: operation.path?.map(node => `${node.kind}:${node.id}`)
+      });
+      if (operation.type === 'drillTo') {
+        console.trace('[StackNav][debug] drillTo enqueue trace');
+      }
+    }
     return new Promise<void>(resolve => {
-      queueRef.current.push({ ...operation, resolve });
+      queueRef.current.push({ ...operation, id: opId, createdAt, resolve });
     });
   }, []);
 
@@ -96,11 +142,21 @@ export const useSpringstackController = <TData,>(
     const next = queueRef.current.shift();
     if (!next) return null;
     processingRef.current = true;
+    processingOpRef.current = next;
+    if (isDebugEnabled()) {
+      console.log('[StackNav][debug] consume', {
+        opId: next.id,
+        type: next.type,
+        ageMs: Date.now() - next.createdAt,
+        remaining: queueRef.current.length
+      });
+    }
     return next;
   }, []);
 
   const markOperationComplete = useCallback(() => {
     processingRef.current = false;
+    processingOpRef.current = null;
   }, []);
 
   const push = useCallback(

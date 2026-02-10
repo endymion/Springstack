@@ -88,6 +88,8 @@ export interface SpringstackRoutingConfig<TData = unknown> {
   parse?: (path: string) => SpringstackNode<TData>[];
   serialize?: (stack: SpringstackNode<TData>[]) => string;
   basePath?: string;
+  waitForCardMs?: number;
+  onMissingCard?: 'abort' | 'push' | 'wait';
 }
 
 export interface SpringstackProps<TData = unknown> {
