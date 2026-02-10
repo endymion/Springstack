@@ -15,7 +15,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps
-      - run: npm test
+      - run: npm run test:e2e
 
   release:
     runs-on: ubuntu-latest
