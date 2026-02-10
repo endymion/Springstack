@@ -1068,6 +1068,7 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
         path: pathSnapshot.map(node => `${node.kind}:${node.id}`),
         runId
       });
+      let succeeded = false;
       try {
         isApplyingRouteRef.current = true;
         isDeepLinkingRef.current = true;
@@ -1130,11 +1131,22 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
         isApplyingRouteRef.current = false;
         lastPathRef.current = getLocationPath();
         debugLog('deepLink:run:done', { runId });
+        succeeded = true;
       } catch (error) {
         console.error('[StackNav] deepLink:run:error', error);
       } finally {
         if (deepLinkInProgressRef.current && runId === deepLinkRunIdRef.current) {
           deepLinkInProgressRef.current = false;
+        }
+        if (isDeepLinkingRef.current && runId === deepLinkRunIdRef.current) {
+          isDeepLinkingRef.current = false;
+          setIsDeepLinking(false);
+        }
+        if (isApplyingRouteRef.current && runId === deepLinkRunIdRef.current) {
+          isApplyingRouteRef.current = false;
+        }
+        if (!succeeded && runId === deepLinkRunIdRef.current) {
+          debugLog('deepLink:run:failed', { runId });
         }
       }
     };
