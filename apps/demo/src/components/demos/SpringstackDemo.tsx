@@ -49,14 +49,8 @@ export interface DemoNodeData {
   itemCount?: number;
   fileSize?: number;
   compressionCodec?: string;
-  fileSize?: number;
-  compressionCodec?: string;
   tableCount?: number;
-  fileSize?: number;
   tableId?: string;
-  tableCount?: number;
-  fileSize?: number;
-  tableName?: string;
   dbUrl?: string;
 }
 
@@ -208,7 +202,7 @@ export const buildTableNode = (item: CorpusItem, tableId: string): SpringstackNo
   title: tableId,
   data: {
     itemId: item.id,
-    tableName: tableId,
+    tableId,
     dbUrl: item.url,
     metaLine: 'SQLite table'
   }
@@ -414,17 +408,19 @@ export function SpringstackDemo() {
               </button>
             </div>
           )}
-          renderOverlay={() => (
-            <SpringstackSettings
-              open={settingsOpen}
-              onOpenChange={setSettingsOpen}
-              appearance={appearance}
-              motion={motion}
-              setAppearance={setAppearance}
-              setMotion={setMotion}
-              selectorMotion={selectorMotion}
-            />
-          )}
+          renderOverlay={() =>
+            settingsOpen ? (
+              <SpringstackSettings
+                open={settingsOpen}
+                onOpenChange={setSettingsOpen}
+                appearance={appearance}
+                motion={motion}
+                setAppearance={setAppearance}
+                setMotion={setMotion}
+                selectorMotion={selectorMotion}
+              />
+            ) : null
+          }
           renderPanels={helpers => {
             const currentCorpus = resolveCurrentCorpus(helpers.stack);
             const currentItems = currentCorpus ? demoItems[currentCorpus.id] ?? [] : [];

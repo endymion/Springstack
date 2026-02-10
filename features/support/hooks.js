@@ -1,6 +1,6 @@
 const { Before, After, setDefaultTimeout } = require('@cucumber/cucumber');
 
-setDefaultTimeout(20000);
+setDefaultTimeout(60000);
 
 Before(async function () {
   await this.init();

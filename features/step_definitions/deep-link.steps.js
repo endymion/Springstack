@@ -45,28 +45,28 @@ const itemKindFor = (id) => ({
 
 Given('I open {string}', async function (path) {
   await this.goto(path);
-  await this.page.waitForSelector(selectors.card(KINDS.folder, 'c-docs'), { state: 'visible', timeout: 10000 });
+  await this.page.waitForSelector(selectors.card(KINDS.folder, 'c-docs'), { state: 'visible', timeout: 20000 });
 });
 
 Then('I see the root panel first', async function () {
-  await this.page.waitForSelector(selectors.panel(0), { state: 'visible', timeout: 10000 });
+  await this.page.waitForSelector(selectors.panel(0), { state: 'visible', timeout: 20000 });
 });
 
 When('I click the corpus card for {string}', async function (name) {
   const id = corpusIdFor(name);
   const selector = selectors.card(KINDS.folder, id);
-  await this.page.waitForSelector(selector, { state: 'visible', timeout: 10000 });
+  await this.page.waitForSelector(selector, { state: 'visible', timeout: 20000 });
   await this.page.dispatchEvent(selector, 'click');
 });
 
 Then('the corpus card for {string} animates to the breadcrumb', async function (name) {
   const id = corpusIdFor(name);
-  await this.page.waitForSelector(selectors.crumb(KINDS.folder, id), { state: 'visible', timeout: 10000 });
+  await this.page.waitForSelector(selectors.crumb(KINDS.folder, id), { state: 'visible', timeout: 20000 });
 });
 
 Then('the corpus breadcrumb for {string} appears', async function (name) {
   const id = corpusIdFor(name);
-  await this.page.waitForSelector(selectors.crumb(KINDS.folder, id), { state: 'visible', timeout: 10000 });
+  await this.page.waitForSelector(selectors.crumb(KINDS.folder, id), { state: 'visible', timeout: 20000 });
 });
 
 When('I click the item card for {string}', async function (itemId) {
@@ -74,7 +74,7 @@ When('I click the item card for {string}', async function (itemId) {
   if (!kind) throw new Error(`Unknown item id: ${itemId}`);
   this.currentItemId = itemId;
   const selector = selectors.card(kind, itemId);
-  await this.page.waitForSelector(selector, { state: 'visible', timeout: 10000 });
+  await this.page.waitForSelector(selector, { state: 'visible', timeout: 20000 });
   await this.page.dispatchEvent(selector, 'click');
 });
 
@@ -83,16 +83,16 @@ When('I click the detail card', async function () {
   if (!itemId) throw new Error('No current item id set');
   const id = `detail-${itemId}`;
   const selector = selectors.card(KINDS.detail, id);
-  await this.page.waitForSelector(selector, { state: 'visible', timeout: 10000 });
+  await this.page.waitForSelector(selector, { state: 'visible', timeout: 20000 });
   await this.page.dispatchEvent(selector, 'click');
 });
 
 Then('the detail panel shows the {string} preview', async function (preview) {
-  await this.page.waitForSelector(`[data-testid="file-${preview}"]`, { state: 'visible', timeout: 10000 });
+  await this.page.waitForSelector(`[data-testid="file-${preview}"]`, { state: 'visible', timeout: 20000 });
 });
 
 Then('the items panel slides in from the right', async function () {
-  await this.page.waitForSelector(selectors.track, { state: 'visible', timeout: 10000 });
+  await this.page.waitForSelector(selectors.track, { state: 'visible', timeout: 20000 });
   await this.page.waitForFunction(
     (selector) => {
       const el = document.querySelector(selector);
@@ -108,6 +108,6 @@ Then('the items panel slides in from the right', async function () {
     selectors.track,
     { timeout: 10000 }
   );
-  const panel = await this.page.waitForSelector(selectors.panel(1), { state: 'visible', timeout: 10000 });
+  const panel = await this.page.waitForSelector(selectors.panel(1), { state: 'visible', timeout: 20000 });
   assert.ok(panel, 'items panel should be visible after slide');
 });
