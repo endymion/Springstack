@@ -27,7 +27,7 @@ export const springstackTypefacePresets: TypefacePreset[] = [
     id: 'impact',
     name: 'Impact',
     headline: { family: "'Anton', Impact, 'Haettenschweiler', 'Arial Narrow Bold', sans-serif", weight: 400 },
-    body: { family: "'Inter', ui-sans-serif, system-ui, sans-serif", weight: 400 },
+    body: { family: "'Source Sans 3', ui-sans-serif, system-ui, sans-serif", weight: 400 },
     eyebrow: { family: "'Inter', ui-sans-serif, system-ui, sans-serif", weight: 600 },
     caps: 'all-caps'
   },
@@ -35,7 +35,7 @@ export const springstackTypefacePresets: TypefacePreset[] = [
     id: 'mono-utility',
     name: 'Mono Utility',
     headline: { family: "'Roboto Mono', ui-monospace, SFMono-Regular, monospace", weight: 600 },
-    body: { family: "'Inter', ui-sans-serif, system-ui, sans-serif", weight: 400 },
+    body: { family: "'Roboto Mono', ui-monospace, SFMono-Regular, monospace", weight: 400 },
     eyebrow: { family: "'Roboto Mono', ui-monospace, SFMono-Regular, monospace", weight: 600 },
     caps: 'all-caps'
   },
@@ -51,7 +51,7 @@ export const springstackTypefacePresets: TypefacePreset[] = [
     id: 'jersey-arcade',
     name: 'Jersey Arcade',
     headline: { family: "'Jersey 15', ui-sans-serif, system-ui, sans-serif", weight: 400 },
-    body: { family: "'Inter', ui-sans-serif, system-ui, sans-serif", weight: 400 },
+    body: { family: "'VT323', ui-monospace, SFMono-Regular, monospace", weight: 400 },
     eyebrow: { family: "'Roboto Mono', ui-monospace, SFMono-Regular, monospace", weight: 600 },
     caps: 'all-caps'
   },
@@ -59,7 +59,7 @@ export const springstackTypefacePresets: TypefacePreset[] = [
     id: 'card-catalog',
     name: 'Card Catalog',
     headline: { family: "'Special Elite', 'Courier New', monospace", weight: 400 },
-    body: { family: "'Source Sans 3', ui-sans-serif, system-ui, sans-serif", weight: 400 },
+    body: { family: "'Source Serif 4', 'Times New Roman', serif", weight: 400 },
     eyebrow: { family: "'Roboto Mono', ui-monospace, SFMono-Regular, monospace", weight: 600 },
     caps: 'all-caps'
   }

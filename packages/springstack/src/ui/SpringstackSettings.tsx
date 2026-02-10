@@ -59,12 +59,12 @@ const TypefacePreview = ({
 }) => (
   <div className="flex flex-col gap-1 px-1">
     <div
-      className="text-xs uppercase tracking-[0.18em]"
+      className="text-sm uppercase tracking-[0.18em]"
       style={{ fontFamily: headline.family, fontWeight: headline.weight }}
     >
       {name}
     </div>
-    <div className="text-xs" style={{ fontFamily: body.family, fontWeight: body.weight }}>
+    <div className="text-sm" style={{ fontFamily: body.family, fontWeight: body.weight }}>
       Evidence pack
     </div>
   </div>
@@ -117,7 +117,7 @@ export function SpringstackSettings({
         )}
         onClick={event => event.stopPropagation()}
       >
-        <div className="h-full overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
+        <div className="flex h-full flex-col">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 font-headline text-sm font-semibold text-foreground">Settings</div>
             <button
@@ -130,7 +130,8 @@ export function SpringstackSettings({
             </button>
           </div>
 
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
+          <div className="mt-6 flex-1 overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
+            <div className="grid gap-6 md:grid-cols-2">
             <div className="flex flex-col gap-6">
               <div>
                 <h3 className="mb-2 font-eyebrow text-xs font-bold text-muted-foreground">Mode</h3>
@@ -220,7 +221,7 @@ export function SpringstackSettings({
               motionEnterDurationMs={selectorMotion?.enterDurationMs}
               options={springstackTypefacePresets.map(preset => ({
                 id: preset.id,
-                label: preset.name,
+                label: '',
                 preview: (
                   <TypefacePreview
                     headline={preset.headline}
@@ -230,6 +231,7 @@ export function SpringstackSettings({
                 )
               }))}
             />
+            </div>
           </div>
         </div>
       </div>

@@ -22,6 +22,8 @@ interface AnimatedSelectorProps {
   motionDurationMs?: number;
   motionEase?: string;
   motionEnterDurationMs?: number;
+  compactIconClassName?: string;
+  compactIconSize?: number;
 }
 
 export function AnimatedSelector({
@@ -34,7 +36,9 @@ export function AnimatedSelector({
   motionDisabled = false,
   motionDurationMs = 1200,
   motionEase = 'elastic.out(1, 0.6)',
-  motionEnterDurationMs = 200
+  motionEnterDurationMs = 200,
+  compactIconClassName = '',
+  compactIconSize = 16
 }: AnimatedSelectorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
@@ -106,7 +110,7 @@ export function AnimatedSelector({
       <div className="absolute inset-0 pointer-events-none z-10">
         <div
           ref={highlightRef}
-          className={'selector-highlight-' + name + ' absolute left-0 top-0 bg-secondary-muted rounded-xl'}
+          className={'selector-highlight-' + name + ' absolute left-0 top-0 bg-selected rounded-xl'}
         />
       </div>
       {options.map(option => {
@@ -125,9 +129,9 @@ export function AnimatedSelector({
               layout === 'vertical'
                 ? 'w-full justify-start gap-3 p-3'
                 : layout === 'grid' || layout === 'compact'
-                  ? 'flex-col gap-2 h-full w-full items-stretch py-2'
+                  ? 'flex-col gap-2 h-full w-full items-stretch py-2 px-2'
                   : 'p-3 flex-col gap-2',
-              isSelected ? 'text-primary-text' : 'text-muted-foreground hover:text-foreground'
+              isSelected ? 'text-selected-foreground' : 'text-muted-foreground hover:text-foreground'
             )}
             style={{
               transition: motionDisabled
@@ -159,7 +163,15 @@ export function AnimatedSelector({
                 </>
               ) : layout === 'compact' ? (
                 <>
-                  {Icon && <Icon className="w-4 h-4" strokeWidth={2.25} />}
+                  {Icon && (
+                    <Icon
+                      className={compactIconClassName}
+                      strokeWidth={2.25}
+                      width={compactIconSize}
+                      height={compactIconSize}
+                      style={{ width: compactIconSize, height: compactIconSize }}
+                    />
+                  )}
                   <span className="text-xs font-bold">{option.label}</span>
                 </>
               ) : (
@@ -169,7 +181,9 @@ export function AnimatedSelector({
                   ) : (
                     Icon && <Icon className="w-6 h-6 self-center" strokeWidth={2.25} />
                   )}
-                  <span className="text-xs font-bold text-center w-full">{option.label}</span>
+                  {option.label ? (
+                    <span className="text-xs font-bold text-center w-full">{option.label}</span>
+                  ) : null}
                 </div>
               )}
             </div>
