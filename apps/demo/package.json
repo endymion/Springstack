@@ -21,7 +21,7 @@
     "gsap": "^3.12.5",
     "jszip": "^3.10.1",
     "lucide-react": "^0.563.0",
-    "mermaid": "^10.9.3",
+    "mermaid": "^10.9.4",
     "papaparse": "^5.5.3",
     "parquet-wasm": "^0.4.0",
     "pdfjs-dist": "^4.8.69",
