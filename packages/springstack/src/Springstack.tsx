@@ -487,9 +487,6 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
     return () => {
       cancelled = true;
     };
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   useEffect(() => {
@@ -506,17 +503,17 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       setIsDeepLinking(true);
       updateModeRef.current = 'replace';
       const apply = async () => {
-      if (parsed.length === 0) {
-        resetStack(initialStack);
-        setTrackX(0);
-        isApplyingRouteRef.current = false;
-        if (isDeepLinkingRef.current) {
-          isDeepLinkingRef.current = false;
-          setIsDeepLinking(false);
+        if (parsed.length === 0) {
+          resetStack(initialStack);
+          setTrackX(0);
+          isApplyingRouteRef.current = false;
+          if (isDeepLinkingRef.current) {
+            isDeepLinkingRef.current = false;
+            setIsDeepLinking(false);
+          }
+        } else {
+          scheduleDeepLink(parsed, 'routing:popstate');
         }
-      } else {
-        scheduleDeepLink(parsed, 'routing:popstate');
-      }
         lastPathRef.current = path;
         debugLog('routing:popstate:done', { path });
       };
