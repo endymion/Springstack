@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 
+if (import.meta.env.DEV) {
+  (globalThis as { __SPRINGSTACK_DEBUG__?: boolean }).__SPRINGSTACK_DEBUG__ = true;
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
