@@ -62,7 +62,19 @@ export function MermaidContent<TData extends MermaidNodeData = MermaidNodeData>(
         const result = await mermaid.render(id, text);
         const sanitized = DOMPurify.sanitize(result.svg, { USE_PROFILES: { svg: true, svgFilters: true } });
         const diagram = detectDiagramType(text);
-        const html = await codeToHtml(text, { lang: 'mermaid', theme: 'github-dark' });
+        let html = '';
+        try {
+          html = await codeToHtml(text, { lang: 'mermaid', theme: 'github-dark' });
+        } catch (highlightError) {
+          try {
+            html = await codeToHtml(text, { lang: 'text', theme: 'github-dark' });
+          } catch {
+            html = `<pre><code>${text
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')}</code></pre>`;
+          }
+        }
         if (cancelled) return;
         setSource(text);
         setSvg(sanitized);

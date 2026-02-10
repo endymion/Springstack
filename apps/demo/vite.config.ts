@@ -4,6 +4,9 @@ import path from 'node:path';
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    exclude: ['parquet-wasm']
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')

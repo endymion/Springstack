@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import arrow2WasmUrl from 'parquet-wasm/esm2/arrow2_bg.wasm?url';
 import { BaseContent } from '../registryComponents';
 import type { FileTypeContentProps } from './types';
 
@@ -59,8 +60,13 @@ export function ParquetContent<TData extends ParquetNodeData = ParquetNodeData>(
         const response = await fetch(node.data.url);
         if (!response.ok) throw new Error('Failed to load Parquet file');
         const buffer = await response.arrayBuffer();
-        const parquet = await import('parquet-wasm/esm/arrow2');
-        if (parquet.default) await parquet.default();
+        const parquet = await import('parquet-wasm/esm2/arrow2');
+        if (parquet.default) {
+          const wasmResponse = await fetch(arrow2WasmUrl);
+          if (!wasmResponse.ok) throw new Error('Failed to load Parquet WASM');
+          const wasmBytes = await wasmResponse.arrayBuffer();
+          await parquet.default(wasmBytes);
+        }
         const arrow = await import('apache-arrow');
         const parquetData = new Uint8Array(buffer);
         const table = arrow.tableFromIPC(parquet.readParquet(parquetData));
