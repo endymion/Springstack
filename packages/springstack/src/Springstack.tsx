@@ -879,6 +879,8 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       pendingCrumbKeyRef.current = null;
       setPendingCrumbKey(prev => (prev === nextCrumbKey ? null : prev));
     }
+    setHiddenCardId(null);
+    setHiddenCardDepth(null);
     await waitForTrackReady(trackRef, contentAreaRef, panelWidthRef);
     const nextDepth = nextStack.length - 1;
     const panelWidth = panelWidthRef.current;
@@ -1206,7 +1208,10 @@ export function Springstack<TData>(props: SpringstackProps<TData>) {
       morphing.kind === node.kind &&
       morphing.id === node.id;
     const allowReveal = isMorphingBack && isMorphing;
-    return hiddenCardId === cardKey && !allowReveal;
+    const isAnimating = controller.isTransitioning || Boolean(morphing);
+    const depthMismatch =
+      hiddenCardDepth !== null && hiddenCardDepth !== controller.activeDepth;
+    return hiddenCardId === cardKey && !allowReveal && (isAnimating || depthMismatch);
   };
 
   const renderCrumb = (node: SpringstackNode<TData>) => {

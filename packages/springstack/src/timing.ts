@@ -17,7 +17,7 @@ export const timingPresets: Record<SpringstackTimingMode, SpringstackTimingConfi
   },
   reduced: {
     beatMs: 80,
-    trackDurationMs: 336,
+    trackDurationMs: 80,
     morphDurationMs: 80,
     fadeDurationMs: 40,
     crumbHeightDurationMs: 80,
