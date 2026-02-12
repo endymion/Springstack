@@ -27,6 +27,11 @@ export function PdfContent<TData extends PdfNodeData = PdfNodeData>({
         <div className="flex flex-col gap-3">
           <Document
             file={file}
+            options={{
+              disableStream: true,
+              disableRange: true,
+              disableAutoFetch: true
+            }}
             onLoadSuccess={info => setPages(info.numPages)}
             loading={<div className="text-xs text-muted-foreground">Loading PDF…</div>}
             error={<div className="text-xs text-destructive">Failed to load PDF.</div>}

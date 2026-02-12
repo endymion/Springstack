@@ -26,7 +26,7 @@ export function AudioContent<TData extends AudioNodeData = AudioNodeData>({
           </div>
         </div>
       ) : (
-        <div className="rounded-md border border-dashed border-muted-foreground/40 bg-card/60 p-3 text-xs text-muted-foreground">
+        <div className="rounded-md border border-dashed border-muted-foreground/40 bg-card/60 p-2 text-xs text-muted-foreground">
           No audio available.
         </div>
       )}

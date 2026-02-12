@@ -525,9 +525,6 @@ export function SpringstackDemo() {
                         Select an item to preview its file detail.
                       </div>
                     )}
-                    <div className="text-xs text-muted-foreground">
-                      This panel is the terminal node. Pop to return.
-                    </div>
                   </div>
                 </div>
               </>
