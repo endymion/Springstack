@@ -28,7 +28,7 @@
     "@videoml/player": "^1.0.0",
     "@videoml/stdlib": "^1.0.0",
     "apache-arrow": "^14.0.2",
-    "dompurify": "^3.1.7",
+    "dompurify": "^3.4.0",
     "gsap": "^3.12.5",
     "jszip": "^3.10.1",
     "lucide-react": "^0.563.0",
