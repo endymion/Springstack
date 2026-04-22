@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@excalidraw/excalidraw": "^0.18.0",
+    "@excalidraw/excalidraw": "^0.18.1",
     "@gsap/react": "^2.1.0",
     "@hpcc-js/wasm-graphviz": "^1.21.0",
     "@radix-ui/colors": "^3.0.0",
@@ -17,11 +17,11 @@
     "@videoml/stdlib": "^1.0.0",
     "apache-arrow": "^14.0.2",
     "clsx": "^2.1.1",
-    "dompurify": "^3.1.7",
+    "dompurify": "^3.4.1",
     "gsap": "^3.12.5",
     "jszip": "^3.10.1",
     "lucide-react": "^0.563.0",
-    "mermaid": "^10.9.3",
+    "mermaid": "^10.9.5",
     "papaparse": "^5.5.3",
     "parquet-wasm": "^0.4.0",
     "pdfjs-dist": "^4.8.69",
