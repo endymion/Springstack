@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@excalidraw/excalidraw": "^0.18.0",
+    "@excalidraw/excalidraw": "^0.18.1",
     "@gsap/react": "^2.1.0",
     "@hpcc-js/wasm-graphviz": "^1.21.0",
     "@radix-ui/colors": "^3.0.0",
